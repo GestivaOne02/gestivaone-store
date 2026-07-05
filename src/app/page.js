@@ -30,7 +30,7 @@ export default async function Home() {
   const { companies, products } = await getMarketplaceData()
 
   return (
-    <main style={{ minHeight: '100vh', background: '#0a0a0f', color: '#fff' }}>
+    <main className="w-full overflow-x-hidden" style={{ minHeight: '100vh', background: '#0a0a0f', color: '#fff' }}>
       <MarketplaceHome initialCompanies={companies} initialProducts={products} />
     </main>
   )

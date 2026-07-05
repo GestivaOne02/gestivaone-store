@@ -1,1154 +1,809 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { motion, AnimatePresence, useInView } from 'framer-motion'
 import Link from 'next/link'
 import {
   Search, ShoppingBag, Heart, ShoppingCart, User, Globe, ChevronDown,
-  ChevronLeft, ChevronRight, Star, Percent, Truck, ShieldCheck, HelpCircle,
-  PhoneCall, MessageSquare, Zap, Clock, ArrowRight, Lock, Plus, Menu, Store,
-  Languages, Tag, Sparkles, Check, Play, ExternalLink
+  ChevronLeft, ChevronRight, Star, Percent, Truck, ShieldCheck,
+  PhoneCall, MessageSquare, Zap, Clock, ArrowRight, Menu,
+  Sparkles, Check, ExternalLink, X, MapPin, Package, CreditCard,
+  BarChart3, Smartphone, Users, TrendingUp, Shield
 } from 'lucide-react'
 
-/* ─── Format Price ─── */
+/* ═══════════════════════════════════════════════════════════
+   CONSTANTS & MOCK DATA
+   ═══════════════════════════════════════════════════════════ */
+
 const fCOP = (v) => v == null ? '' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(v)
 
-/* ─── Category Emoji / Details ─── */
-const CATEGORIES_LIST = [
-  { name: 'Tecnología', icon: '💻', count: 145 },
-  { name: 'Computadores', icon: '🖥️', count: 89 },
-  { name: 'Celulares y Tablets', icon: '📱', count: 210 },
-  { name: 'Electrodomésticos', icon: '🔌', count: 64 },
-  { name: 'Hogar y Cocina', icon: '🏠', count: 320 },
-  { name: 'Moda y Accesorios', icon: '👗', count: 540 },
-  { name: 'Belleza y Cuidado', icon: '💄', count: 180 },
-  { name: 'Deportes y Aire libre', icon: '⚽', count: 95 },
-  { name: 'Juguetes y Niños', icon: '🧸', count: 120 },
-  { name: 'Mascotas', icon: '🐾', count: 75 },
-  { name: 'Automotriz', icon: '🚗', count: 42 }
+const CATEGORIES = [
+  { name: 'Tecnología', icon: '💻' },
+  { name: 'Celulares', icon: '📱' },
+  { name: 'Computadores', icon: '🖥️' },
+  { name: 'Electrodomésticos', icon: '🔌' },
+  { name: 'Hogar y Cocina', icon: '🏠' },
+  { name: 'Moda', icon: '👗' },
+  { name: 'Belleza', icon: '💄' },
+  { name: 'Deportes', icon: '⚽' },
+  { name: 'Juguetes', icon: '🧸' },
+  { name: 'Mascotas', icon: '🐾' },
+  { name: 'Automotriz', icon: '🚗' },
 ]
 
-const TICKER_TEXTS_1 = [
-  '🚀 CREA TU TIENDA ONLINE GRATIS EN GESTIVA',
-  '💚 SIN TARJETA DE CRÉDITO NI COSTOS OCULTOS',
-  '📦 GESTIONA TU INVENTARIO EN TIEMPO REAL',
-  '💳 CONTROLA PEDIDOS CONTRA ENTREGA (COD)',
-  '📈 HAZ CRECER TU NEGOCIO DESDE HOY',
-  '🛒 PUBLICA PRODUCTOS ILIMITADOS SIN LÍMITE'
+const TICKER_ITEMS = [
+  '🚀 Crea tu tienda gratis',
+  '💚 Sin tarjeta de crédito',
+  '📦 Gestiona inventario',
+  '💳 Controla pedidos',
+  '📈 Haz crecer tu negocio',
+  '🛒 Productos ilimitados',
+  '🤝 Soporte personalizado',
+  '📱 Comparte por WhatsApp',
+  '⚡ Configuración en minutos',
 ]
 
-const TICKER_TEXTS_2 = [
-  '⚡ CONFIGURACIÓN EN SOLO MINUTOS',
-  '🤝 SOPORTE PERSONALIZADO POR WHATSAPP',
-  '📱 COMPARTE TU ENLACE POR REDES SOCIALES',
-  '📦 ENVÍOS RÁPIDOS EN TODA COLOMBIA',
-  '🔒 DATOS RESPALDADOS Y SEGUROS',
-  '🔥 ÚNETE A LAS MÁS DE 500 TIENDAS ACTIVAS'
+const TICKER_ITEMS_2 = [
+  '🔒 Datos respaldados y seguros',
+  '📦 Envíos rápidos en Colombia',
+  '🔥 +500 tiendas activas',
+  '💰 0% comisiones de venta',
+  '🎯 Panel administrativo completo',
+  '📊 Reportes en tiempo real',
 ]
 
-// Fallback high-quality mock stores
-const MOCK_COMPANIES = [
-  {
-    id: 'mock-1',
-    name: 'ElectroMax Colombia',
-    store_slug: 'electromax',
-    logo_url: '',
-    store_settings: {
-      accent_color: '#3b82f6',
-      seo_description: 'Especialistas en gadgets y tecnología importada de alta gama. Los mejores precios del mercado.',
-      banner_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80',
-      category: 'Tecnología'
-    },
-    rating: 4.8,
-    reviews: 1205,
-    products_count: 245
-  },
-  {
-    id: 'mock-2',
-    name: 'TechStore Bogotá',
-    store_slug: 'techstore',
-    logo_url: '',
-    store_settings: {
-      accent_color: '#4f46e5',
-      seo_description: 'Tu tienda de confianza para computadores de alto rendimiento y periféricos gamer.',
-      banner_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=400&q=80',
-      category: 'Tecnología'
-    },
-    rating: 4.9,
-    reviews: 892,
-    products_count: 189
-  },
-  {
-    id: 'mock-3',
-    name: 'Hogar Ideal',
-    store_slug: 'hogarideal',
-    logo_url: '',
-    store_settings: {
-      accent_color: '#10b981',
-      seo_description: 'Todo lo que necesitas para tu hogar. Artículos de cocina, decoración y electrodomésticos.',
-      banner_url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=400&q=80',
-      category: 'Hogar y Cocina'
-    },
-    rating: 4.7,
-    reviews: 654,
-    products_count: 312
-  },
-  {
-    id: 'mock-4',
-    name: 'Moda Urbana Jeans',
-    store_slug: 'modaurbana',
-    logo_url: '',
-    store_settings: {
-      accent_color: '#ec4899',
-      seo_description: 'Últimas tendencias en ropa casual, jeans y chaquetas de colección urbana para jóvenes.',
-      banner_url: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=400&q=80',
-      category: 'Moda y Accesorios'
-    },
-    rating: 4.6,
-    reviews: 1104,
-    products_count: 156
-  },
-  {
-    id: 'mock-5',
-    name: 'Sport Center',
-    store_slug: 'sportcenter',
-    logo_url: '',
-    store_settings: {
-      accent_color: '#f59e0b',
-      seo_description: 'Implementos deportivos, tenis para running, pesas y ropa fitness para atletas de alto nivel.',
-      banner_url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=400&q=80',
-      category: 'Deportes'
-    },
-    rating: 4.8,
-    reviews: 743,
-    products_count: 278
-  },
-  {
-    id: 'mock-6',
-    name: 'Beauty Shop Premium',
-    store_slug: 'beautyshop',
-    logo_url: '',
-    store_settings: {
-      accent_color: '#8b5cf6',
-      seo_description: 'Maquillaje profesional, cuidado capilar y productos de skin care de las marcas más reconocidas.',
-      banner_url: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=400&q=80',
-      category: 'Belleza y Cuidado'
-    },
-    rating: 4.7,
-    reviews: 532,
-    products_count: 178
-  }
+const MOCK_STORES = [
+  { id: 'ms-1', name: 'ElectroMax', store_slug: 'electromax', store_settings: { accent_color: '#3b82f6', seo_description: 'Gadgets y tecnología importada de alta gama.', banner_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80', category: 'Tecnología' }, rating: 4.8, reviews: 1205, products_count: 245 },
+  { id: 'ms-2', name: 'TechStore', store_slug: 'techstore', store_settings: { accent_color: '#4f46e5', seo_description: 'Computadores de alto rendimiento y periféricos gamer.', banner_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80', category: 'Tecnología' }, rating: 4.9, reviews: 892, products_count: 189 },
+  { id: 'ms-3', name: 'Hogar Ideal', store_slug: 'hogarideal', store_settings: { accent_color: '#10b981', seo_description: 'Artículos de cocina, decoración y electrodomésticos.', banner_url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80', category: 'Hogar' }, rating: 4.7, reviews: 654, products_count: 312 },
+  { id: 'ms-4', name: 'Moda Urbana', store_slug: 'modaurbana', store_settings: { accent_color: '#ec4899', seo_description: 'Tendencias en ropa casual y jeans urbanos.', banner_url: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=600&q=80', category: 'Moda' }, rating: 4.6, reviews: 1104, products_count: 156 },
+  { id: 'ms-5', name: 'Sport Center', store_slug: 'sportcenter', store_settings: { accent_color: '#f59e0b', seo_description: 'Implementos deportivos y ropa fitness.', banner_url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=600&q=80', category: 'Deportes' }, rating: 4.8, reviews: 743, products_count: 278 },
+  { id: 'ms-6', name: 'Beauty Premium', store_slug: 'beautyshop', store_settings: { accent_color: '#8b5cf6', seo_description: 'Maquillaje profesional y skin care.', banner_url: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=600&q=80', category: 'Belleza' }, rating: 4.7, reviews: 532, products_count: 178 },
 ]
 
-// Fallback high-quality mock products
 const MOCK_PRODUCTS = [
-  {
-    id: 'prod-1',
-    name: 'Portátil Lenovo IdeaPad 3 AMD Ryzen 5',
-    price: 2049900,
-    category: 'Computadores',
-    image_url: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?auto=format&fit=crop&w=400&q=80',
-    show_in_store: true,
-    discount_type: 'amount',
-    discount_value: 450000,
-    featured: true,
-    free_shipping: true,
-    rating: 4.8,
-    reviews: 124,
-    company_id: 'mock-2'
-  },
-  {
-    id: 'prod-2',
-    name: 'Xiaomi Redmi Note 13 Pro 8GB/256GB',
-    price: 1059900,
-    category: 'Celulares y Tablets',
-    image_url: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=400&q=80',
-    show_in_store: true,
-    discount_type: 'percentage',
-    discount_value: 15,
-    featured: true,
-    free_shipping: true,
-    rating: 4.7,
-    reviews: 88,
-    company_id: 'mock-1'
-  },
-  {
-    id: 'prod-3',
-    name: 'Audífonos JBL Tune 520BT Bluetooth',
-    price: 199900,
-    category: 'Tecnología',
-    image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80',
-    show_in_store: true,
-    discount_type: 'percentage',
-    discount_value: 30,
-    featured: false,
-    free_shipping: false,
-    rating: 4.6,
-    reviews: 256,
-    company_id: 'mock-1'
-  },
-  {
-    id: 'prod-4',
-    name: 'Reloj Xiaomi Watch S2 Pantalla AMOLED',
-    price: 729900,
-    category: 'Tecnología',
-    image_url: 'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=400&q=80',
-    show_in_store: true,
-    discount_type: 'percentage',
-    discount_value: 18,
-    featured: true,
-    free_shipping: true,
-    rating: 4.6,
-    reviews: 178,
-    company_id: 'mock-2'
-  },
-  {
-    id: 'prod-5',
-    name: 'Cámara Canon EOS Rebel T7 Reflex',
-    price: 1999900,
-    category: 'Tecnología',
-    image_url: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=400&q=80',
-    show_in_store: true,
-    discount_type: 'amount',
-    discount_value: 500000,
-    featured: true,
-    free_shipping: true,
-    rating: 4.7,
-    reviews: 53,
-    company_id: 'mock-2'
-  },
-  {
-    id: 'prod-6',
-    name: 'Freidora de Aire Oster 4L Digital',
-    price: 599900,
-    category: 'Hogar y Cocina',
-    image_url: 'https://images.unsplash.com/photo-1621972750749-0fbb1abb7736?auto=format&fit=crop&w=400&q=80',
-    show_in_store: true,
-    discount_type: 'percentage',
-    discount_value: 20,
-    featured: false,
-    free_shipping: false,
-    rating: 4.6,
-    reviews: 145,
-    company_id: 'mock-3'
-  }
+  { id: 'mp-1', name: 'Portátil Lenovo IdeaPad 3 Ryzen 5 16GB 512SSD', price: 2049900, category: 'Computadores', image_url: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?auto=format&fit=crop&w=400&q=80', discount_type: 'amount', discount_value: 450000, featured: true, free_shipping: true, rating: 4.8, reviews: 124, company_id: 'ms-2' },
+  { id: 'mp-2', name: 'Xiaomi Redmi Note 13 Pro 8GB RAM 256GB', price: 1059900, category: 'Celulares', image_url: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=400&q=80', discount_type: 'percentage', discount_value: 15, featured: true, free_shipping: true, rating: 4.7, reviews: 88, company_id: 'ms-1' },
+  { id: 'mp-3', name: 'Audífonos JBL Tune 520BT Bluetooth 5.3', price: 199900, category: 'Tecnología', image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80', discount_type: 'percentage', discount_value: 30, featured: false, free_shipping: false, rating: 4.6, reviews: 256, company_id: 'ms-1' },
+  { id: 'mp-4', name: 'Smartwatch Xiaomi Watch S2 AMOLED GPS', price: 729900, category: 'Tecnología', image_url: 'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=400&q=80', discount_type: 'percentage', discount_value: 18, featured: true, free_shipping: true, rating: 4.6, reviews: 178, company_id: 'ms-2' },
+  { id: 'mp-5', name: 'Cámara Canon EOS Rebel T7 Kit 18-55mm', price: 1999900, category: 'Tecnología', image_url: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=400&q=80', discount_type: 'amount', discount_value: 500000, featured: true, free_shipping: true, rating: 4.7, reviews: 53, company_id: 'ms-2' },
+  { id: 'mp-6', name: 'Freidora de Aire Oster 4L Digital 8 Programas', price: 399900, category: 'Hogar y Cocina', image_url: 'https://images.unsplash.com/photo-1621972750749-0fbb1abb7736?auto=format&fit=crop&w=400&q=80', discount_type: 'percentage', discount_value: 20, featured: false, free_shipping: false, rating: 4.6, reviews: 145, company_id: 'ms-3' },
 ]
+
+const HERO_SLIDES = [
+  { title: 'Tecnología que transforma tu mundo', sub: 'Hasta 50% OFF en las mejores marcas. Envío gratis a todo el país.', cta: 'Ver ofertas', badge: 'MEGA OFERTAS', img: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1400&q=80' },
+  { title: 'Moda que define tu estilo', sub: 'Zapatillas, chaquetas y accesorios con pago contra entrega.', cta: 'Explorar colección', badge: 'TENDENCIAS 2026', img: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1400&q=80' },
+  { title: 'Equipa tu hogar con lo mejor', sub: 'Freidoras, cafeteras y licuadoras inteligentes. Garantía total.', cta: 'Comprar ahora', badge: 'HOGAR INTELIGENTE', img: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1400&q=80' },
+]
+
+/* ═══════════════════════════════════════════════════════════
+   ANIMATION HELPERS
+   ═══════════════════════════════════════════════════════════ */
+
+const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } } }
+const fadeIn = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0.4 } } }
+
+function Reveal({ children, className = '', delay = 0 }) {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: '-60px' })
+  return (
+    <motion.div
+      ref={ref}
+      initial="hidden"
+      animate={isInView ? 'visible' : 'hidden'}
+      variants={fadeUp}
+      transition={{ delay }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN COMPONENT
+   ═══════════════════════════════════════════════════════════ */
 
 export default function MarketplaceHome({ initialCompanies = [], initialProducts = [] }) {
   const [search, setSearch] = useState('')
   const [selectedCat, setSelectedCat] = useState('Todos')
-  const [currentSlide, setCurrentSlide] = useState(0)
+  const [slide, setSlide] = useState(0)
+  const [catOpen, setCatOpen] = useState(false)
+  const catRef = useRef(null)
 
-  // Countdown timer for "Ofertas del día"
-  const [timeLeft, setTimeLeft] = useState({ hours: 8, minutes: 45, seconds: 32 })
-
+  // Countdown
+  const [countdown, setCountdown] = useState({ h: 8, m: 45, s: 32 })
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 }
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: prev.minutes - 1, seconds: 59 }
-        } else if (prev.hours > 0) {
-          return { hours: prev.hours - 1, minutes: 59, seconds: 59 }
-        } else {
-          return { hours: 8, minutes: 45, seconds: 32 } // reset
-        }
-      })
-    }, 1000)
-    return () => clearInterval(interval)
+    const t = setInterval(() => setCountdown(p => {
+      if (p.s > 0) return { ...p, s: p.s - 1 }
+      if (p.m > 0) return { ...p, m: p.m - 1, s: 59 }
+      if (p.h > 0) return { h: p.h - 1, m: 59, s: 59 }
+      return { h: 8, m: 45, s: 32 }
+    }), 1000)
+    return () => clearInterval(t)
   }, [])
 
-  // Auto carousel rotation
+  // Carousel auto
   useEffect(() => {
-    const slideInterval = setInterval(() => {
-      setCurrentSlide(prev => (prev + 1) % 3)
-    }, 6000)
-    return () => clearInterval(slideInterval)
+    const t = setInterval(() => setSlide(p => (p + 1) % HERO_SLIDES.length), 5000)
+    return () => clearInterval(t)
   }, [])
 
-  // Merge database items with beautiful fallback mocks so page looks extremely complete
-  const allCompanies = useMemo(() => {
+  // Click outside dropdown
+  useEffect(() => {
+    const handler = (e) => { if (catRef.current && !catRef.current.contains(e.target)) setCatOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Merge DB data with mocks
+  const stores = useMemo(() => {
     const list = [...initialCompanies]
-    // Filter duplicates
-    MOCK_COMPANIES.forEach(m => {
-      if (!list.some(c => c.store_slug === m.store_slug || c.name === m.name)) {
-        list.push(m)
-      }
-    })
+    MOCK_STORES.forEach(m => { if (!list.some(c => c.store_slug === m.store_slug)) list.push(m) })
     return list
   }, [initialCompanies])
 
-  const allProducts = useMemo(() => {
+  const products = useMemo(() => {
     const list = [...initialProducts]
-    MOCK_PRODUCTS.forEach(m => {
-      if (!list.some(p => p.name === m.name)) {
-        list.push(m)
-      }
-    })
+    MOCK_PRODUCTS.forEach(m => { if (!list.some(p => p.name === m.name)) list.push(m) })
     return list
   }, [initialProducts])
 
-  // Lookups
-  const companyMap = useMemo(() => {
-    return new Map(allCompanies.map(c => [c.id, c]))
-  }, [allCompanies])
+  const companyMap = useMemo(() => new Map(stores.map(c => [c.id, c])), [stores])
 
-  // Extract unique categories available
-  const categories = useMemo(() => {
-    const cats = new Set(allProducts.map(p => p.category).filter(Boolean))
-    return ['Todos', ...Array.from(cats)]
-  }, [allProducts])
+  // Derived
+  const promos = useMemo(() => products.filter(p => p.discount_value > 0).slice(0, 6), [products])
+  const featured = useMemo(() => products.filter(p => p.featured).slice(0, 8), [products])
+  const freeShip = useMemo(() => products.filter(p => p.free_shipping || p.price >= 199900).slice(0, 6), [products])
+  const allCats = useMemo(() => ['Todos', ...new Set(products.map(p => p.category).filter(Boolean))], [products])
 
-  // Filter products based on search term & category selector
-  const filteredProducts = useMemo(() => {
-    return allProducts.filter(p => {
-      const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
-                          (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
-      const matchCat = selectedCat === 'Todos' || p.category === selectedCat
-      return matchSearch && matchCat
+  const filtered = useMemo(() => {
+    return products.filter(p => {
+      const ms = !search || p.name.toLowerCase().includes(search.toLowerCase())
+      const mc = selectedCat === 'Todos' || p.category === selectedCat
+      return ms && mc
     })
-  }, [allProducts, search, selectedCat])
+  }, [products, search, selectedCat])
 
-  // Filter companies based on search term
-  const filteredCompanies = useMemo(() => {
-    if (!search) return allCompanies.slice(0, 12)
-    return allCompanies.filter(c => 
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.store_settings?.seo_description && c.store_settings.seo_description.toLowerCase().includes(search.toLowerCase()))
-    )
-  }, [allCompanies, search])
+  const filteredStores = useMemo(() => {
+    if (!search) return stores.slice(0, 12)
+    return stores.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+  }, [stores, search])
 
-  // Partition products for sections
-  const promoProducts = useMemo(() => {
-    return allProducts.filter(p => p.discount_value && p.discount_value > 0).slice(0, 6)
-  }, [allProducts])
+  const pad = (n) => String(n).padStart(2, '0')
 
-  const featuredProducts = useMemo(() => {
-    return allProducts.filter(p => p.featured).slice(0, 6)
-  }, [allProducts])
-
-  const freeShippingProducts = useMemo(() => {
-    return allProducts.filter(p => p.free_shipping || p.price >= 199900).slice(0, 6)
-  }, [allProducts])
-
-  const bestSellers = useMemo(() => {
-    return [...allProducts].sort(() => 0.5 - Math.random()).slice(0, 6)
-  }, [allProducts])
-
-  const newStores = useMemo(() => {
-    return allCompanies.slice(0, 4)
-  }, [allCompanies])
-
-  const carouselSlides = [
-    {
-      title: 'Tecnología que transforma tu mundo',
-      desc: 'Las mejores marcas con hasta 50% OFF y envíos gratis a todo el país.',
-      btnText: 'Ver ofertas de Tecnología',
-      img: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=80',
-      badge: 'MEGA OFERTAS',
-      color: 'from-blue-600/90 to-indigo-900/95'
-    },
-    {
-      title: 'Moda que define tu propio estilo',
-      desc: 'Zapatillas, chaquetas y accesorios urbanos con pago contra entrega en casa.',
-      btnText: 'Explorar Colección',
-      img: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80',
-      badge: 'TENDENCIAS 2026',
-      color: 'from-pink-600/90 to-purple-900/95'
-    },
-    {
-      title: 'Equipa tu hogar con lo mejor',
-      desc: 'Freidoras, cafeteras y licuadoras inteligentes. Garantía asegurada.',
-      btnText: 'Comprar Hogar',
-      img: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80',
-      badge: 'CASA INTELIGENTE',
-      color: 'from-emerald-600/90 to-teal-900/95'
-    }
-  ]
-
+  /* ═══════════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════════ */
   return (
-    <div className="min-h-screen bg-[#06060a] text-gray-100 font-sans selection:bg-brand-500 selection:text-white pb-10">
-      
-      {/* ─── 1. TOP BENEFITS BAR ─── */}
-      <div className="bg-surface-900/90 border-b border-white/5 py-2 px-4 text-[10px] sm:text-xs text-muted-500 font-medium">
-        <div className="max-w-[1400px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-center">
-            <span className="flex items-center gap-1.5 text-brand-300">
-              <Truck size={12} className="text-brand-400" />
-              Envíos gratis en pedidos superiores a $199.900
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Sparkles size={12} className="text-yellow-400" />
-              Paga con Addi, Sistecrédito o Contra entrega
-            </span>
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck size={12} className="text-success-400" />
-              Garantía en todos nuestros productos
-            </span>
-          </div>
-          <div className="flex items-center gap-4 text-[10px]">
-            <a href="#soporte" className="hover:text-brand-400 transition-colors">Soporte 24/7</a>
-            <span className="text-white/10">|</span>
-            <span className="flex items-center gap-1 cursor-pointer hover:text-brand-400">
-              <Globe size={11} />
-              CO (COP)
-            </span>
-          </div>
-        </div>
+    <div className="min-h-screen text-gray-200 w-full overflow-x-hidden" style={{ background: '#08080d' }}>
+
+      <div className="overflow-hidden select-none" style={{ background: 'linear-gradient(90deg, #0a0a14, #0e0e1a, #0a0a14)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+        <motion.div
+          className="flex items-center flex-nowrap gap-10 w-max py-2"
+          animate={{ x: ['0%', '-50%'] }}
+          transition={{ duration: 35, ease: 'linear', repeat: Infinity }}
+        >
+          {[...Array(2)].map((_, loop) => (
+            <div key={loop} className="flex items-center flex-nowrap gap-10 shrink-0">
+              <span className="flex items-center gap-2 text-[11px] font-bold whitespace-nowrap"><Truck size={13} className="text-indigo-400" /><span className="text-gray-300">Envíos gratis desde $199.900</span></span>
+              <span className="text-gray-600">•</span>
+              <span className="flex items-center gap-2 text-[11px] font-bold whitespace-nowrap"><CreditCard size={13} className="text-yellow-400" /><span className="text-gray-300">Addi · Sistecrédito · Contra entrega</span></span>
+              <span className="text-gray-600">•</span>
+              <span className="flex items-center gap-2 text-[11px] font-bold whitespace-nowrap"><ShieldCheck size={13} className="text-emerald-400" /><span className="text-gray-300">Garantía en todos los productos</span></span>
+              <span className="text-gray-600">•</span>
+              <span className="flex items-center gap-2 text-[11px] font-bold whitespace-nowrap"><PhoneCall size={13} className="text-sky-400" /><span className="text-gray-300">Soporte 24/7 por WhatsApp</span></span>
+              <span className="text-gray-600">•</span>
+              <span className="flex items-center gap-2 text-[11px] font-bold whitespace-nowrap"><Shield size={13} className="text-purple-400" /><span className="text-gray-300">Compra 100% segura</span></span>
+              <span className="text-gray-600">•</span>
+              <span className="flex items-center gap-2 text-[11px] font-bold whitespace-nowrap"><MapPin size={13} className="text-rose-400" /><span className="text-gray-300">Envíos a toda Colombia</span></span>
+              <span className="text-gray-600">•</span>
+              <span className="flex items-center gap-2 text-[11px] font-bold whitespace-nowrap"><Zap size={13} className="text-amber-400" /><span className="text-gray-300">Tu tienda online en 5 minutos</span></span>
+              <span className="text-gray-600">•</span>
+            </div>
+          ))}
+        </motion.div>
       </div>
 
-      {/* ─── 2. STICKY MAIN HEADER ─── */}
-      <header className="sticky top-0 z-50 bg-[#06060a]/90 backdrop-blur-xl border-b border-white/5 py-4 px-4">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-4">
-          
+      {/* ──────────────────────────────────────────
+          2. HEADER — buscador protagonista
+      ────────────────────────────────────────── */}
+      <header className="sticky top-0 z-50 backdrop-blur-xl" style={{ background: 'rgba(8,8,13,0.95)', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+        <div className="max-w-[1440px] mx-auto px-8 py-5 flex items-center justify-between gap-10">
+
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-brand-500/10 border border-brand-500/25 flex items-center justify-center font-black text-brand-400 text-lg shadow-[0_0_15px_rgba(79,70,229,0.15)]">
-              <Zap size={18} className="text-brand-400 fill-brand-400/20" />
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105" style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+              <Zap size={20} className="text-white fill-white/20" />
             </div>
-            <span className="text-lg font-black tracking-tight text-white uppercase sm:block">
-              gestiva<span className="text-brand-400 font-extrabold">.store</span>
+            <span className="text-lg font-black tracking-tight text-white hidden sm:block">
+              gestiva<span className="text-indigo-400">.store</span>
             </span>
           </Link>
 
-          {/* Buscador y Dropdown de Categorías */}
-          <div className="flex-1 max-w-2xl hidden md:flex items-center bg-surface-800 border border-white/5 hover:border-brand-500/30 rounded-xl overflow-hidden shadow-inner transition-all group">
-            
-            {/* Categorías Dropdown */}
-            <div className="relative shrink-0 border-r border-white/5">
-              <select
-                value={selectedCat}
-                onChange={e => setSelectedCat(e.target.value)}
-                className="bg-transparent border-0 text-xs font-bold text-gray-300 py-3 pl-4 pr-8 focus:ring-0 focus:outline-none cursor-pointer hover:text-white"
+          {/* BUSCADOR (protagonista, espacioso y limpio) */}
+          <div className="flex-1 max-w-2xl flex items-stretch rounded-xl overflow-hidden transition-all focus-within:border-indigo-500/30" style={{ background: '#111119', border: '1px solid rgba(255,255,255,0.06)' }}>
+            {/* Category dropdown */}
+            <div className="relative shrink-0 hidden md:flex" ref={catRef}>
+              <button
+                onClick={() => setCatOpen(!catOpen)}
+                className="flex items-center gap-2 px-4 text-xs font-semibold text-gray-400 hover:text-white cursor-pointer h-full"
+                style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}
               >
-                <option value="Todos">Todas las categorías</option>
-                {categories.filter(c => c !== 'Todos').map(c => (
-                  <option key={c} value={c} className="bg-surface-800">{c}</option>
-                ))}
-              </select>
+                <Menu size={13} />
+                <span className="hidden lg:inline">{selectedCat === 'Todos' ? 'Categorías' : selectedCat}</span>
+                <ChevronDown size={11} className={`transition-transform ${catOpen ? 'rotate-180' : ''}`} />
+              </button>
+              <AnimatePresence>
+                {catOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+                    className="absolute left-0 top-full mt-2 w-56 rounded-xl p-1.5 z-50 shadow-2xl"
+                    style={{ background: '#12121c', border: '1px solid rgba(255,255,255,0.08)' }}
+                  >
+                    {allCats.map(c => (
+                      <button key={c} onClick={() => { setSelectedCat(c); setCatOpen(false) }}
+                        className={`w-full text-left px-3.5 py-2.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${selectedCat === c ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                      >{c}</button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-
-            {/* Search Input */}
-            <div className="relative flex-1 flex items-center pl-3">
-              <Search size={16} className="text-gray-500 mr-2 shrink-0 group-hover:text-brand-400 transition-colors" />
+            {/* Input */}
+            <div className="flex-1 flex items-center px-4 gap-2.5">
+              <Search size={16} className="text-gray-500 shrink-0" />
               <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Busca productos, tiendas o marcas en Colombia..."
-                className="w-full bg-transparent text-xs py-3 text-white border-none outline-none focus:ring-0 placeholder:text-gray-500 font-medium"
+                value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar productos, marcas y tiendas..."
+                className="w-full bg-transparent text-[13px] text-white outline-none placeholder:text-gray-500 font-medium py-3.5"
               />
-              {search && (
-                <button
-                  onClick={() => setSearch('')}
-                  className="bg-white/10 hover:bg-white/20 hover:text-white text-gray-400 rounded-full w-5 h-5 flex items-center justify-center text-[10px] mr-3 cursor-pointer"
-                >
-                  ×
-                </button>
-              )}
+              {search && <button onClick={() => setSearch('')} className="text-gray-500 hover:text-white cursor-pointer"><X size={15} /></button>}
             </div>
-
-            {/* Search Button */}
-            <button
-              onClick={() => {}}
-              className="bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold px-5 py-3 h-full cursor-pointer transition-colors"
-            >
-              Buscar
+            {/* Button */}
+            <button className="px-6 text-xs font-bold text-white cursor-pointer shrink-0 transition-colors hover:bg-indigo-700" style={{ background: '#4f46e5' }}>
+              <Search size={16} />
             </button>
           </div>
 
-          {/* Acciones Rápidas */}
-          <div className="flex items-center gap-5 shrink-0">
-            
-            {/* Pedidos */}
-            <Link href="#pedidos" className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-xs font-semibold relative py-1">
-              <ShoppingBag size={16} />
-              <span className="hidden lg:inline">Pedidos</span>
+          {/* Actions (Espaciadas y limpias) */}
+          <div className="flex items-center gap-6 shrink-0 text-gray-400">
+            <Link href="#" className="flex flex-col items-center gap-1 hover:text-white transition-colors p-1 hidden sm:flex">
+              <ShoppingBag size={20} />
+              <span className="text-[10px] font-bold tracking-wide">Pedidos</span>
             </Link>
-
-            {/* Favoritos */}
-            <Link href="#favoritos" className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-xs font-semibold relative py-1">
-              <Heart size={16} />
-              <span className="hidden lg:inline">Favoritos</span>
+            <Link href="#" className="flex flex-col items-center gap-1 hover:text-white transition-colors p-1 hidden sm:flex">
+              <Heart size={20} />
+              <span className="text-[10px] font-bold tracking-wide">Favoritos</span>
             </Link>
-
-            {/* Carrito */}
-            <div className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-xs font-semibold relative py-1 cursor-pointer">
-              <div className="relative">
-                <ShoppingCart size={16} />
-                <span className="absolute -top-2 -right-2 bg-brand-500 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center border border-[#06060a]">
-                  3
-                </span>
-              </div>
-              <span className="hidden lg:inline">Carrito</span>
+            <div className="flex flex-col items-center gap-1 hover:text-white transition-colors p-1 cursor-pointer relative">
+              <ShoppingCart size={20} />
+              <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full text-[9px] font-black flex items-center justify-center text-white" style={{ background: '#4f46e5' }}>3</span>
+              <span className="text-[10px] font-bold tracking-wide">Carrito</span>
             </div>
-
-            <span className="text-white/10 hidden sm:inline">|</span>
-
-            {/* Perfil / Cuenta */}
-            <Link href="https://gestivaone.com/auth" target="_blank" className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-800 hover:bg-surface-700 border border-white/5 hover:border-brand-500/20 text-xs font-bold text-gray-200 transition-all">
-              <User size={14} className="text-brand-400" />
+            <div className="w-px h-7 bg-white/5 hidden sm:block" />
+            <Link href="https://gestivaone.com/auth" target="_blank" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold hover:text-white transition-all hover:bg-white/5" style={{ background: '#111118', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <User size={15} className="text-indigo-400" />
               <span>Mi cuenta</span>
-              <ChevronDown size={12} className="text-gray-500" />
             </Link>
           </div>
         </div>
 
-        {/* Móvil: Buscador visible en segunda línea */}
-        <div className="max-w-[1400px] mx-auto mt-3 md:hidden flex items-center bg-surface-800 border border-white/5 rounded-xl overflow-hidden shadow-inner px-3">
-          <Search size={16} className="text-gray-500 mr-2 shrink-0" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Busca productos, tiendas o categorías..."
-            className="w-full bg-transparent text-xs py-2 text-white border-none outline-none focus:ring-0 placeholder:text-gray-500"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="bg-white/10 text-gray-400 rounded-full w-5 h-5 flex items-center justify-center text-[10px] ml-2 cursor-pointer"
-            >
-              ×
-            </button>
-          )}
+        {/* Mobile search */}
+        <div className="md:hidden max-w-[1440px] mx-auto px-6 pb-4">
+          <div className="flex items-center gap-2.5 rounded-xl px-4 py-3" style={{ background: '#111118', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <Search size={16} className="text-gray-500 shrink-0" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar productos, tiendas..." className="w-full bg-transparent text-[13px] text-white outline-none placeholder:text-gray-500" />
+          </div>
         </div>
       </header>
 
-      {/* ─── 3. HERO GRID COMPOSICIÓN (100% ANCHO DE PANTALLA) ─── */}
-      <section className="max-w-[1400px] mx-auto px-4 mt-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          
-          {/* Col 1: Categorías Sidebar (Menú Lateral) */}
-          <div className="lg:col-span-3 bg-surface-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between overflow-hidden shrink-0 hidden lg:flex">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-extrabold uppercase text-gray-300 tracking-wider pb-3 border-b border-white/5 mb-3">
-                <Menu size={14} className="text-brand-400" />
-                <span>Todas las categorías</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                {CATEGORIES_LIST.map(cat => (
-                  <button
-                    key={cat.name}
-                    onClick={() => setSelectedCat(cat.name)}
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-left transition-colors cursor-pointer ${
-                      selectedCat === cat.name
-                        ? 'bg-brand-500/10 text-brand-400 border border-brand-500/20'
-                        : 'text-gray-400 hover:text-white hover:bg-surface-800 border border-transparent'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className="text-sm">{cat.icon}</span>
-                      <span>{cat.name}</span>
-                    </span>
-                    <span className="text-[9px] text-gray-600 bg-surface-800 px-1.5 py-0.5 rounded">
-                      {cat.count}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            <button
-              onClick={() => setSelectedCat('Todos')}
-              className="w-full text-center py-2.5 mt-4 bg-surface-800 hover:bg-surface-700 text-xs font-bold text-gray-400 hover:text-white rounded-xl border border-white/5 transition-colors cursor-pointer"
+      {/* ──────────────────────────────────────────
+          3. CATEGORY NAV STRIP — Limpio y Espacioso (Estilo Link, Sin Emojis)
+      ────────────────────────────────────────── */}
+      <nav style={{ background: '#0a0a12', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+        <div className="max-w-[1440px] mx-auto px-8 flex items-center gap-8 overflow-x-auto no-scrollbar py-3.5">
+          <button 
+            onClick={() => setSelectedCat('Todos')}
+            className={`text-[13px] font-semibold whitespace-nowrap cursor-pointer transition-all pb-1 border-b-2 ${selectedCat === 'Todos' ? 'text-indigo-400 border-indigo-400' : 'text-gray-400 hover:text-white border-transparent'}`}
+          >
+            Todos los productos
+          </button>
+          {CATEGORIES.map(c => (
+            <button 
+              key={c.name} 
+              onClick={() => setSelectedCat(c.name)}
+              className={`text-[13px] font-semibold whitespace-nowrap cursor-pointer transition-all pb-1 border-b-2 flex items-center gap-1.5 ${selectedCat === c.name ? 'text-indigo-400 border-indigo-400' : 'text-gray-400 hover:text-white border-transparent'}`}
             >
-              Ver todas las categorías
+              <span>{c.name}</span>
             </button>
-          </div>
-
-          {/* Col 2: Banner Principal / Carrusel */}
-          <div className="lg:col-span-6 rounded-2xl relative overflow-hidden min-h-[300px] lg:min-h-full flex flex-col justify-end p-6 sm:p-10 border border-white/5 shadow-2xl">
-            {/* Background Slides */}
-            <div className="absolute inset-0 z-0">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentSlide}
-                  initial={{ opacity: 0, scale: 1.05 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.6 }}
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={{ backgroundImage: `url(${carouselSlides[currentSlide].img})` }}
-                />
-              </AnimatePresence>
-              <div className="absolute inset-0 bg-gradient-to-t from-[#06060a] via-[#06060a]/75 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-r from-surface-900/90 via-transparent to-transparent" />
-            </div>
-
-            {/* Slide Content */}
-            <div className="relative z-10 space-y-4 max-w-lg">
-              <span className="inline-block bg-brand-500 text-white font-extrabold text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.4)] animate-pulse">
-                {carouselSlides[currentSlide].badge}
-              </span>
-              <h1 className="text-2xl sm:text-4xl font-black text-white leading-tight tracking-tight drop-shadow-md">
-                {carouselSlides[currentSlide].title}
-              </h1>
-              <p className="text-xs sm:text-sm text-gray-300 drop-shadow">
-                {carouselSlides[currentSlide].desc}
-              </p>
-              
-              <div className="flex items-center gap-4 pt-2">
-                <button
-                  onClick={() => setSelectedCat('Todos')}
-                  className="btn btn-primary text-xs flex items-center gap-1 px-5 py-2.5 cursor-pointer shadow-lg hover:shadow-brand-500/20"
-                >
-                  <span>{carouselSlides[currentSlide].btnText}</span>
-                  <ArrowRight size={14} />
-                </button>
-              </div>
-            </div>
-
-            {/* Slider Dots */}
-            <div className="absolute bottom-5 right-5 flex items-center gap-2 z-20">
-              {carouselSlides.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentSlide(i)}
-                  className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${
-                    currentSlide === i ? 'bg-brand-400 w-6' : 'bg-gray-600 hover:bg-gray-400'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Col 3: Promociones / SaaS Stack Lateral */}
-          <div className="lg:col-span-3 flex flex-col gap-6 justify-between items-stretch">
-            
-            {/* Card Superior: Paga como prefieras */}
-            <div className="bg-surface-900 border border-white/5 rounded-2xl p-5 flex flex-col justify-between gap-4 flex-1">
-              <div>
-                <h3 className="text-xs font-extrabold uppercase text-gray-400 tracking-wider mb-3">Paga como prefieras</h3>
-                <p className="text-[11px] text-gray-500 leading-normal mb-4">
-                  Compra de forma flexible en cualquier tienda del marketplace con múltiples alternativas seguras.
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-surface-800/80 px-2.5 py-1.5 rounded-lg border border-white/5 flex items-center justify-center font-bold text-[10px] text-white">
-                    Addi
-                  </div>
-                  <div className="bg-surface-800/80 px-2.5 py-1.5 rounded-lg border border-white/5 flex items-center justify-center font-bold text-[10px] text-white">
-                    Sistecrédito
-                  </div>
-                  <div className="bg-surface-800/80 px-2.5 py-1.5 rounded-lg border border-white/5 flex items-center justify-center font-bold text-[10px] text-white">
-                    Mercado Pago
-                  </div>
-                  <div className="bg-surface-800/80 px-2.5 py-1.5 rounded-lg border border-white/5 flex items-center justify-center font-bold text-[10px] text-white">
-                    Contra entrega
-                  </div>
-                </div>
-              </div>
-              <Link href="#pagos" className="text-[10px] font-bold text-brand-400 hover:text-brand-300 flex items-center gap-1 self-start mt-2">
-                <span>Ver métodos de pago</span>
-                <ChevronRight size={11} />
-              </Link>
-            </div>
-
-            {/* Card Inferior: Vende con Gestiva */}
-            <div className="bg-gradient-to-br from-brand-600/90 to-indigo-900/95 border border-brand-500/20 rounded-2xl p-5 flex flex-col justify-between gap-3 flex-1 relative overflow-hidden group">
-              <div className="absolute top-[-30px] right-[-30px] w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10 transition-colors" />
-              
-              <div className="space-y-1">
-                <span className="inline-block bg-white/10 text-white font-black text-[8px] tracking-widest px-2 py-0.5 rounded uppercase">
-                  Crea tu Tienda
-                </span>
-                <h3 className="text-sm font-black text-white leading-tight">Vende con Gestiva</h3>
-                <p className="text-[10px] text-brand-200 leading-normal">
-                  Crea tu tienda virtual hoy, gestiona tu stock y publica tus productos en este marketplace.
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <a
-                  href="https://gestivaone.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full text-center py-2 bg-white text-brand-700 text-[10px] font-black hover:bg-brand-50 rounded-xl transition-all cursor-pointer shadow-lg"
-                >
-                  Crear mi tienda gratis
-                </a>
-                <span className="text-[8px] text-brand-300 text-center block">Sin tarjetas · Configuración en 5 min</span>
-              </div>
-            </div>
-
-          </div>
-
+          ))}
         </div>
-      </section>
+      </nav>
 
-      {/* ─── 4. TRUST BADGES ROW ─── */}
-      <section className="max-w-[1400px] mx-auto px-4 mt-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 bg-surface-900/40 border border-white/5 rounded-2xl p-5 backdrop-blur-md">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center shrink-0 text-brand-400">
-              <Truck size={18} />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-white">Envíos gratis</h4>
-              <p className="text-[10px] text-gray-500 mt-0.5">En pedidos desde $199.900</p>
-            </div>
-          </div>
+      {/* ──────────────────────────────────────────
+          4. HERO — inmersivo, full width
+      ────────────────────────────────────────── */}
+      <section className="relative overflow-hidden" style={{ height: 'clamp(340px, 50vh, 520px)' }}>
+        {/* Slide bg */}
+        <AnimatePresence mode="wait">
+          <motion.div key={slide} initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}
+            className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${HERO_SLIDES[slide].img})` }} />
+        </AnimatePresence>
+        {/* Overlays */}
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(8,8,13,0.92) 0%, rgba(8,8,13,0.6) 50%, rgba(8,8,13,0.3) 100%)' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, #08080d 0%, transparent 40%)' }} />
 
-          <div className="flex items-start gap-3 border-l-0 sm:border-l border-white/5 pl-0 sm:pl-4">
-            <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center shrink-0 text-brand-400">
-              <ShieldCheck size={18} />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-white">Paga seguro</h4>
-              <p className="text-[10px] text-gray-500 mt-0.5">Tus compras protegidas</p>
-            </div>
-          </div>
+        {/* Content */}
+        <div className="relative z-10 max-w-[1440px] mx-auto px-4 h-full flex items-center">
+          <div className="max-w-xl space-y-5">
+            <motion.span key={`b-${slide}`} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}
+              className="inline-block px-3 py-1 rounded-full text-[9px] font-black tracking-widest text-white"
+              style={{ background: 'rgba(79,70,229,0.8)', boxShadow: '0 0 20px rgba(79,70,229,0.3)' }}
+            >{HERO_SLIDES[slide].badge}</motion.span>
 
-          <div className="flex items-start gap-3 border-l-0 lg:border-l border-white/5 pl-0 lg:pl-4">
-            <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center shrink-0 text-brand-400">
-              <Zap size={18} className="animate-pulse" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-white">Garantía total</h4>
-              <p className="text-[10px] text-gray-500 mt-0.5">30 días de garantía total</p>
-            </div>
-          </div>
+            <motion.h1 key={`t-${slide}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5 }}
+              className="text-3xl sm:text-5xl font-black text-white leading-tight tracking-tight"
+              style={{ textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}
+            >{HERO_SLIDES[slide].title}</motion.h1>
 
-          <div className="flex items-start gap-3 border-l-0 sm:border-l border-white/5 pl-0 sm:pl-4">
-            <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center shrink-0 text-brand-400">
-              <PhoneCall size={18} />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-white">Soporte 24/7</h4>
-              <p className="text-[10px] text-gray-500 mt-0.5">Estamos para ayudarte</p>
-            </div>
-          </div>
-        </div>
-      </section>
+            <motion.p key={`s-${slide}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}
+              className="text-sm text-gray-300 max-w-md leading-relaxed"
+            >{HERO_SLIDES[slide].sub}</motion.p>
 
-      {/* ─── 5. INFINITE MOVING TICKERS (BARRAS ANIMADAS EN DIVERSOS COLORES) ─── */}
-      <section className="mt-8 space-y-3 overflow-hidden select-none">
-        
-        {/* Ticker 1: Purple Theme */}
-        <div className="bg-brand-600/10 border-t border-b border-brand-500/20 py-2.5">
-          <motion.div
-            className="flex gap-16 w-max white-space-nowrap"
-            animate={{ x: ['0%', '-50%'] }}
-            transition={{ duration: 26, ease: 'linear', repeat: Infinity }}
-          >
-            {[...TICKER_TEXTS_1, ...TICKER_TEXTS_1].map((text, i) => (
-              <span key={i} className="text-[10px] font-black text-brand-300 tracking-wider flex items-center gap-2">
-                <Sparkles size={11} className="text-yellow-400 animate-spin" />
-                {text}
-              </span>
-            ))}
-          </motion.div>
-        </div>
-
-        {/* Ticker 2: Emerald Theme */}
-        <div className="bg-emerald-600/10 border-t border-b border-emerald-500/20 py-2.5">
-          <motion.div
-            className="flex gap-16 w-max white-space-nowrap"
-            animate={{ x: ['-50%', '0%'] }}
-            transition={{ duration: 30, ease: 'linear', repeat: Infinity }}
-          >
-            {[...TICKER_TEXTS_2, ...TICKER_TEXTS_2].map((text, i) => (
-              <span key={i} className="text-[10px] font-black text-emerald-400 tracking-wider flex items-center gap-2">
-                <Check size={11} className="text-emerald-500" />
-                {text}
-              </span>
-            ))}
-          </motion.div>
-        </div>
-
-      </section>
-
-      {/* ─── 6. MAIN EXPLORATION MARKETPLACE ─── */}
-      <main className="max-w-[1400px] mx-auto px-4 mt-10">
-
-        {/* CATEGORY SELECTOR CAROUSEL (Rápido & Circular) */}
-        <div className="mb-10">
-          <div className="section-header">
-            <span className="section-title">📂 Categorías populares</span>
-          </div>
-          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar scroll-smooth">
-            {CATEGORIES_LIST.map(cat => (
-              <button
-                key={cat.name}
-                onClick={() => setSelectedCat(cat.name)}
-                className={`flex flex-col items-center gap-3 bg-surface-900 border px-6 py-5 rounded-2xl min-w-[110px] text-center transition-all cursor-pointer ${
-                  selectedCat === cat.name
-                    ? 'border-brand-500 bg-brand-500/10 text-white'
-                    : 'border-white/5 hover:border-brand-500/30 text-gray-400 hover:text-white hover:bg-surface-800'
-                }`}
-              >
-                <div className="w-12 h-12 rounded-full bg-surface-800 border border-white/5 flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">
-                  {cat.icon}
-                </div>
-                <span className="text-[10px] font-bold tracking-tight">{cat.name}</span>
+            <motion.div key={`c-${slide}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="flex items-center gap-3">
+              <button className="px-6 py-3 rounded-lg text-sm font-bold text-white cursor-pointer flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', boxShadow: '0 4px 20px rgba(79,70,229,0.4)' }}>
+                {HERO_SLIDES[slide].cta} <ArrowRight size={16} />
               </button>
-            ))}
+              <a href="https://gestivaone.com" target="_blank" rel="noopener noreferrer"
+                className="px-4 py-3 rounded-lg text-xs font-semibold text-gray-300 hover:text-white cursor-pointer transition-colors"
+                style={{ background: 'rgba(255,255,255,0.06)' }}>
+                Crear mi tienda
+              </a>
+            </motion.div>
           </div>
         </div>
 
-        {/* IF SEARCH IS ACTIVE */}
-        {search ? (
-          <div className="space-y-10">
-            <div className="section-header">
-              <span className="section-title">🔍 Resultados para «{search}» ({filteredProducts.length + filteredCompanies.length})</span>
-            </div>
+        {/* Dots */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+          {HERO_SLIDES.map((_, i) => (
+            <button key={i} onClick={() => setSlide(i)}
+              className={`h-1.5 rounded-full cursor-pointer transition-all ${i === slide ? 'w-8 bg-indigo-400' : 'w-3 bg-white/20 hover:bg-white/40'}`} />
+          ))}
+        </div>
 
-            {/* Stores */}
-            {filteredCompanies.length > 0 && (
-              <div>
-                <h3 className="text-xs font-extrabold uppercase text-brand-400 tracking-wider mb-4">Tiendas encontradas ({filteredCompanies.length})</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredCompanies.map(c => (
-                    <StoreCard key={c.id} company={c} />
-                  ))}
-                </div>
+        {/* Mini promo card (desktop only) */}
+        <div className="absolute right-8 top-1/2 -translate-y-1/2 w-60 hidden xl:flex flex-col gap-4 z-20">
+          {/* Payment Card */}
+          <div className="rounded-2xl p-5 backdrop-blur-xl shadow-2xl relative overflow-hidden" 
+               style={{ 
+                 background: 'rgba(11,11,19,0.85)', 
+                 border: '1px solid rgba(255,255,255,0.06)',
+                 boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+               }}>
+            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-3">Paga a tu ritmo</p>
+            <div className="grid grid-cols-2 gap-2">
+              {/* Addi */}
+              <div className="flex items-center justify-center h-8 rounded-lg text-[10px] font-black text-black tracking-tighter cursor-pointer hover:scale-105 transition-transform" 
+                   style={{ background: '#E3FF00' }}
+                   title="Paga con Addi">
+                addi
               </div>
-            )}
-
-            {/* Products */}
-            <div>
-              <h3 className="text-xs font-extrabold uppercase text-brand-400 tracking-wider mb-4">Productos encontrados ({filteredProducts.length})</h3>
-              {filteredProducts.length === 0 ? (
-                <div className="bg-surface-900 border border-white/5 rounded-2xl text-center py-12 px-4">
-                  <span className="text-3xl block mb-2">🔍</span>
-                  <h4 className="text-sm font-bold text-white mb-1">Sin coincidencias</h4>
-                  <p className="text-xs text-gray-500">Prueba ajustando el término de búsqueda.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {filteredProducts.map(p => {
-                    const comp = companyMap.get(p.company_id)
-                    return <ProductCard key={p.id} product={p} company={comp} />
-                  })}
-                </div>
-              )}
+              {/* Sistecrédito */}
+              <div className="flex items-center justify-center h-8 rounded-lg text-[9px] font-black text-white tracking-tight cursor-pointer hover:scale-105 transition-transform" 
+                   style={{ background: '#004B87' }}
+                   title="Paga con Sistecrédito">
+                Sistecrédito
+              </div>
+              {/* Nequi */}
+              <div className="flex items-center justify-center h-8 rounded-lg text-[10px] font-black text-[#da1c5c] tracking-tight cursor-pointer hover:scale-105 transition-transform" 
+                   style={{ background: '#1E022F', border: '1px solid rgba(218,28,92,0.2)' }}
+                   title="Paga con Nequi">
+                nequi
+              </div>
+              {/* Contra Entrega */}
+              <div className="flex items-center justify-center gap-1 h-8 rounded-lg text-[8px] font-extrabold text-emerald-300 cursor-pointer hover:scale-105 transition-transform" 
+                   style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)' }}
+                   title="Pago contra entrega">
+                <Truck size={10} className="shrink-0" /> Contra entrega
+              </div>
             </div>
+            <p className="text-[9px] text-gray-500 text-center mt-3 font-medium">Cuotas sin interés o efectivo al recibir</p>
           </div>
-        ) : (
-          /* STANDARD CATEGORIZED CONTENT */
-          <div className="space-y-12">
+
+          {/* Seller CTA Card */}
+          <a href="https://gestivaone.com" target="_blank" rel="noopener noreferrer"
+             className="rounded-2xl p-5 backdrop-blur-xl group cursor-pointer shadow-2xl relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5"
+             style={{ 
+               background: 'linear-gradient(135deg, rgba(79,70,229,0.25), rgba(124,58,237,0.15))', 
+               border: '1px solid rgba(99,102,241,0.2)',
+               boxShadow: '0 20px 40px rgba(79,70,229,0.15)'
+             }}>
+            {/* Background Glow */}
+            <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition-colors" />
             
-            {selectedCat !== 'Todos' ? (
-              <div>
-                <div className="section-header">
-                  <span className="section-title">Resultados de «{selectedCat}»</span>
-                  <span className="section-count">{filteredProducts.length}</span>
-                </div>
-                {filteredProducts.length === 0 ? (
-                  <div className="bg-surface-900 border border-white/5 rounded-2xl text-center py-12">
-                    <span className="text-3xl block mb-2">📦</span>
-                    <h4 className="text-sm font-bold text-white mb-1">Categoría vacía</h4>
-                    <p className="text-xs text-gray-500">Aún no hay productos en esta sección.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {filteredProducts.map(p => {
-                      const comp = companyMap.get(p.company_id)
-                      return <ProductCard key={p.id} product={p} company={comp} />
-                    })}
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* DASHBOARD FULL SECTIONS */
-              <div className="space-y-12">
-                
-                {/* A. TIENDAS DESTACADAS */}
-                <div>
-                  <div className="section-header">
-                    <span className="section-title">🏪 Tiendas destacadas</span>
-                    <span className="text-[10px] font-bold text-brand-400 cursor-pointer hover:text-brand-300">Ver todas</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {allCompanies.slice(0, 6).map(c => (
-                      <StoreCard key={c.id} company={c} />
-                    ))}
-                  </div>
-                </div>
-
-                {/* B. OFERTAS DEL DÍA (WITH COUNTDOWN TIMER) */}
-                {promoProducts.length > 0 && (
-                  <div className="bg-surface-900/30 border border-white/5 rounded-3xl p-6 relative overflow-hidden">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/5">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">🔥</span>
-                        <div>
-                          <h3 className="text-sm font-black text-white uppercase tracking-tight">Ofertas del día</h3>
-                          <p className="text-[10px] text-gray-500">Descuentos únicos actualizados en tiempo real</p>
-                        </div>
-                      </div>
-                      
-                      {/* Timer */}
-                      <div className="flex items-center gap-2 bg-danger-500/10 border border-danger-500/20 px-3 py-1.5 rounded-xl text-danger-400 font-extrabold text-xs">
-                        <Clock size={13} className="animate-pulse" />
-                        <span>Termina en:</span>
-                        <span className="bg-danger-500 text-white px-1.5 py-0.5 rounded font-mono text-[10px]">
-                          {timeLeft.hours.toString().padStart(2, '0')}
-                        </span>
-                        <span>:</span>
-                        <span className="bg-danger-500 text-white px-1.5 py-0.5 rounded font-mono text-[10px]">
-                          {timeLeft.minutes.toString().padStart(2, '0')}
-                        </span>
-                        <span>:</span>
-                        <span className="bg-danger-500 text-white px-1.5 py-0.5 rounded font-mono text-[10px]">
-                          {timeLeft.seconds.toString().padStart(2, '0')}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                      {promoProducts.map(p => {
-                        const comp = companyMap.get(p.company_id)
-                        return <ProductCard key={p.id} product={p} company={comp} />
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* INTERCALATED ELEGANT BANNER 1 */}
-                <div className="bg-gradient-to-r from-brand-900/40 via-surface-900/90 to-surface-900 border border-brand-500/10 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="space-y-1">
-                    <span className="text-[8px] font-black bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded uppercase tracking-widest">
-                      Ecosistema Gestiva
-                    </span>
-                    <h3 className="text-base font-black text-white">Administra tu inventario y controla pedidos fácilmente</h3>
-                    <p className="text-xs text-gray-500 leading-normal max-w-xl">
-                      ¿Cansado de configurar producto por producto? Gestiva te permite controlar todo desde un solo panel administrativo. Más económico y eficiente.
-                    </p>
-                  </div>
-                  <a
-                    href="https://gestivaone.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-secondary text-xs flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span>Saber más</span>
-                    <ExternalLink size={12} />
-                  </a>
-                </div>
-
-                {/* C. NUEVAS TIENDAS */}
-                {newStores.length > 0 && (
-                  <div>
-                    <div className="section-header">
-                      <span className="section-title">🌱 Nuevas tiendas virtuales</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {newStores.map(c => (
-                        <StoreCard key={c.id} company={c} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* D. PRODUCTOS RECOMENDADOS (FEATURED) */}
-                {featuredProducts.length > 0 && (
-                  <div>
-                    <div className="section-header">
-                      <span className="section-title">⭐ Recomendados para ti</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                      {featuredProducts.map(p => {
-                        const comp = companyMap.get(p.company_id)
-                        return <ProductCard key={p.id} product={p} company={comp} />
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* INTERCALATED ELEGANT BANNER 2 */}
-                <div className="bg-gradient-to-r from-emerald-950/40 via-surface-900/90 to-surface-900 border border-emerald-500/10 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="space-y-1">
-                    <span className="text-[8px] font-black bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded uppercase tracking-widest">
-                      Garantía contra entrega
-                    </span>
-                    <h3 className="text-base font-black text-white">Tu tienda lista para vender en minutos sin tarjeta de crédito</h3>
-                    <p className="text-xs text-gray-500 leading-normal max-w-xl">
-                      Únete hoy a Gestiva y sube tu catálogo. Acepta cobros locales con Addi y contra entrega de manera automatizada.
-                    </p>
-                  </div>
-                  <a
-                    href="https://gestivaone.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-primary text-xs flex items-center gap-1.5 cursor-pointer bg-emerald-600 hover:bg-emerald-500 border-none shadow-[0_0_15px_rgba(16,185,129,0.15)]"
-                  >
-                    <span>Crear tienda gratis</span>
-                    <ArrowRight size={12} />
-                  </a>
-                </div>
-
-                {/* E. PRODUCTOS CON ENVÍO GRATIS */}
-                {freeShippingProducts.length > 0 && (
-                  <div>
-                    <div className="section-header">
-                      <span className="section-title">🚚 Productos con envío gratis</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                      {freeShippingProducts.map(p => {
-                        const comp = companyMap.get(p.company_id)
-                        return <ProductCard key={p.id} product={p} company={comp} />
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* F. MÁS VENDIDOS */}
-                {bestSellers.length > 0 && (
-                  <div>
-                    <div className="section-header">
-                      <span className="section-title">📈 Productos más vendidos</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                      {bestSellers.map(p => {
-                        const comp = companyMap.get(p.company_id)
-                        return <ProductCard key={p.id} product={p} company={comp} />
-                      })}
-                    </div>
-                  </div>
-                )}
-
-              </div>
-            )}
-
-          </div>
-        )}
-
-      </main>
-
-      {/* ─── 7. PREMIUM WHATSAPP ADVISOR BLOCK ─── */}
-      <section className="max-w-[1400px] mx-auto px-4 mt-16" id="soporte">
-        <div className="bg-gradient-to-br from-surface-900 via-surface-900 to-emerald-950/30 border border-white/5 rounded-3xl p-6 sm:p-10 relative overflow-hidden flex flex-col md:flex-row items-center gap-8 shadow-2xl">
-          
-          {/* Cover glow */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none" />
-
-          {/* Advisor avatar/illustration */}
-          <div className="relative shrink-0 flex items-center justify-center">
-            <div className="w-24 h-24 rounded-full bg-emerald-500/10 border-2 border-emerald-500/20 p-1">
-              <img
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80"
-                alt="Asesora de Gestiva"
-                className="w-full h-full object-cover rounded-full filter saturate-100 shadow-md"
-              />
-            </div>
-            {/* Active green status badge */}
-            <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-surface-900 rounded-full animate-pulse" />
-          </div>
-
-          <div className="flex-1 space-y-3 text-center md:text-left">
-            <span className="inline-block bg-emerald-500/15 text-emerald-400 font-extrabold text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-emerald-500/20">
-              SOPORTE 1A1 PERSONALIZADO
-            </span>
-            <h2 className="text-lg sm:text-2xl font-black text-white leading-tight">
-              ¿Necesitas ayuda para comenzar a vender?
-            </h2>
-            <p className="text-xs text-gray-400 leading-relaxed max-w-xl">
-              Nuestros asesores técnicos de GestivaOne configuran tu catálogo digital, te ayudan a organizar tus productos y responden tus dudas sin costo adicional.
+            <p className="text-[10px] font-extrabold text-indigo-300 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+              <Sparkles size={11} className="text-indigo-400" /> Vende en Gestiva
             </p>
-            <div className="flex flex-wrap justify-center md:justify-start gap-4 text-[10px] text-gray-500">
-              <span className="flex items-center gap-1">✔️ Carga masiva de catálogo</span>
-              <span className="text-white/10">•</span>
-              <span className="flex items-center gap-1">✔️ Conexión contra entrega</span>
-              <span className="text-white/10">•</span>
-              <span className="flex items-center gap-1">✔️ Soporte ilimitado</span>
-            </div>
-          </div>
-
-          {/* Chat Button */}
-          <a
-            href="https://wa.me/573022034253?text=Hola!%20Necesito%20asesoria%20personalizada%20para%20crear%20mi%20tienda%20online%20en%20Gestiva"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-6 py-4 bg-[#25d366] hover:bg-[#20ba5a] text-white text-xs sm:text-sm font-extrabold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(37,211,102,0.3)] shrink-0 cursor-pointer"
-          >
-            <MessageSquare size={16} className="fill-white/10" />
-            <span>Hablar por WhatsApp</span>
+            <p className="text-[11px] text-gray-300 leading-relaxed font-medium">
+              Crea tu tienda virtual gratis. Configuración rápida sin tarjetas.
+            </p>
+            <span className="text-[10px] font-black text-indigo-300 flex items-center gap-1 mt-3 group-hover:translate-x-1 transition-transform">
+              Empezar ahora <ArrowRight size={11} />
+            </span>
           </a>
         </div>
       </section>
 
-      {/* ─── 8. FREE TRIAL HERO CONVERSION BANNER ─── */}
-      <section className="max-w-[1400px] mx-auto px-4 mt-16">
-        <div className="bg-gradient-to-r from-brand-900 to-indigo-900 border border-brand-500/35 rounded-3xl p-8 sm:p-14 text-center relative overflow-hidden shadow-glow">
-          <div className="absolute top-[-50px] left-[-50px] w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
-          
-          <div className="relative z-10 max-w-xl mx-auto space-y-5">
-            <span className="inline-block bg-white/15 text-white font-extrabold text-[9px] uppercase tracking-widest px-3 py-1 rounded-full border border-white/10">
-              PRUEBA GESTIVAONE GRATIS
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight tracking-tight">
-              Lleva tu negocio al siguiente nivel hoy mismo
-            </h2>
-            <p className="text-xs sm:text-sm text-brand-200 leading-relaxed">
-              Sin tarjeta de crédito. Configuración en minutos. Publica productos ilimitados y pon tu tienda virtual a facturar de inmediato.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-3">
-              <a
-                href="https://gestivaone.com/auth"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto px-8 py-4 bg-white text-brand-700 hover:bg-brand-50 text-xs sm:text-sm font-extrabold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 shadow-xl"
-              >
-                <span>Crear mi tienda gratis</span>
-                <ArrowRight size={14} />
-              </a>
-              <span className="text-[10px] text-brand-300">Listo en menos de 5 minutos</span>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* ─── 9. MARKETPLACE FOOTER ─── */}
-      <footer className="border-t border-white/5 mt-20 pt-16 pb-10 bg-[#040407]">
-        <div className="max-w-[1400px] mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-10">
-          
-          {/* Brand Col */}
-          <div className="space-y-4 md:col-span-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-brand-500/10 border border-brand-500/25 flex items-center justify-center font-bold text-brand-400 text-base">
-                <Zap size={14} className="text-brand-400 fill-brand-400/10" />
+      <div className="overflow-hidden select-none py-2.5" style={{ background: 'linear-gradient(90deg, rgba(79,70,229,0.08), rgba(124,58,237,0.08))' }}>
+        <motion.div className="flex flex-nowrap gap-12 w-max" animate={{ x: ['0%', '-50%'] }} transition={{ duration: 25, ease: 'linear', repeat: Infinity }}>
+          {[...TICKER_ITEMS, ...TICKER_ITEMS].map((t, i) => (
+            <span key={i} className="text-[10px] font-black tracking-wider text-indigo-300/70 whitespace-nowrap">{t}</span>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* ──────────────────────────────────────────
+          MAIN CONTENT
+      ────────────────────────────────────────── */}
+
+      {search ? (
+        /* ─── SEARCH RESULTS ─── */
+        <main className="max-w-[1440px] mx-auto px-4 py-10 space-y-8">
+          <h2 className="text-lg font-bold text-white">Resultados para &laquo;{search}&raquo;</h2>
+          {filteredStores.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Tiendas ({filteredStores.length})</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredStores.map(c => <StoreCard key={c.id} company={c} />)}
               </div>
-              <span className="text-base font-black text-white uppercase tracking-tight">
-                gestiva<span className="text-brand-400">.store</span>
-              </span>
             </div>
-            <p className="text-xs text-gray-500 leading-relaxed max-w-sm">
-              Plataforma digital integrada de facturación, administración de inventarios y canales e-commerce autónomos para emprendimientos y pymes de Colombia.
-            </p>
+          )}
+          <div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Productos ({filtered.length})</p>
+            {filtered.length === 0 ? (
+              <div className="text-center py-16">
+                <p className="text-2xl mb-2">🔍</p>
+                <p className="text-sm font-semibold text-white">Sin resultados</p>
+                <p className="text-xs text-gray-500 mt-1">Prueba con otro término.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {filtered.map(p => <ProductCard key={p.id} product={p} company={companyMap.get(p.company_id)} />)}
+              </div>
+            )}
+          </div>
+        </main>
+      ) : selectedCat !== 'Todos' ? (
+        /* ─── CATEGORY FILTER ─── */
+        <main className="max-w-[1440px] mx-auto px-4 py-10">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-bold text-white">{selectedCat}</h2>
+            <span className="text-xs text-gray-500 font-semibold">{filtered.length} productos</span>
+          </div>
+          {filtered.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-2xl mb-2">📦</p>
+              <p className="text-sm font-semibold text-white">Categoría vacía</p>
+              <p className="text-xs text-gray-500 mt-1">Aún no hay productos publicados.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              {filtered.map(p => <ProductCard key={p.id} product={p} company={companyMap.get(p.company_id)} />)}
+            </div>
+          )}
+        </main>
+      ) : (
+        /* ─── FULL MARKETPLACE DASHBOARD ─── */
+        <div>
+
+
+          {/* ─── TIENDAS DESTACADAS (horizontal scroll) ─── */}
+          <Reveal>
+            <section style={{ background: '#0a0a12' }} className="py-10">
+              <div className="max-w-[1440px] mx-auto px-4">
+                <SectionTitle emoji="🏪" title="Tiendas destacadas" link="Ver todas" />
+                <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 mt-5">
+                  {stores.slice(0, 8).map(c => (
+                    <div key={c.id} className="shrink-0 w-[260px] sm:w-[300px]">
+                      <StoreCard company={c} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          </Reveal>
+
+          {/* ─── OFERTAS DEL DÍA ─── */}
+          <Reveal>
+            <section className="py-10" style={{ background: '#09090e' }}>
+              <div className="max-w-[1440px] mx-auto px-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">🔥</span>
+                    <div>
+                      <h3 className="text-base font-black text-white">Ofertas del día</h3>
+                      <p className="text-[10px] text-gray-500">Precios especiales por tiempo limitado</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171' }}>
+                    <Clock size={13} />
+                    <span>Termina en</span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono text-white" style={{ background: '#ef4444' }}>{pad(countdown.h)}</span>:
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono text-white" style={{ background: '#ef4444' }}>{pad(countdown.m)}</span>:
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono text-white" style={{ background: '#ef4444' }}>{pad(countdown.s)}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                  {promos.map(p => <ProductCard key={p.id} product={p} company={companyMap.get(p.company_id)} />)}
+                </div>
+              </div>
+            </section>
+          </Reveal>
+
+          {/* ─── BANNER GESTIVA 1 — PROMO SAAS PREMIUM ─── */}
+          <Reveal>
+            <section className="max-w-[1440px] mx-auto px-6 sm:px-8 py-12">
+              <div 
+                className="relative rounded-3xl overflow-hidden py-16 px-8 sm:px-12 lg:px-16" 
+                style={{ 
+                  background: 'linear-gradient(135deg, #0d0b21 0%, #151136 50%, #0d0b21 100%)',
+                  border: '1px solid rgba(99, 102, 241, 0.15)',
+                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+                }}
+              >
+                {/* Background glow effects */}
+                <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none" />
+                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
+
+                <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                  
+                  {/* Left Column - Content */}
+                  <div className="lg:col-span-7 space-y-6">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-extrabold tracking-wider uppercase text-indigo-300 bg-indigo-500/10 border border-indigo-500/20">
+                      <Sparkles size={11} /> GestivaOne · Software de Gestión
+                    </div>
+                    
+                    <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight">
+                      ¿Tienes un negocio?<br className="hidden sm:inline" />
+                      Crea tu tienda virtual hoy gratis
+                    </h2>
+                    
+                    <p className="text-sm text-indigo-200/80 leading-relaxed max-w-xl">
+                      Administra tu inventario en tiempo real, registra pedidos contra entrega, factura electrónicamente y publica automáticamente en nuestro marketplace sin complicaciones.
+                    </p>
+                    
+                    {/* Checks row */}
+                    <div className="flex flex-wrap gap-2.5 pt-2">
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20">
+                        <Check size={13} /> Sin tarjeta de crédito
+                      </span>
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20">
+                        <Check size={13} /> Listo en 5 minutos
+                      </span>
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20">
+                        <Check size={13} /> 0% comisiones de venta
+                      </span>
+                    </div>
+                    
+                    {/* CTA Button */}
+                    <div className="pt-2">
+                      <a 
+                        href="https://gestivaone.com" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-sm font-black text-indigo-950 bg-white hover:bg-gray-100 hover:-translate-y-0.5 active:translate-y-0 transition-all shadow-lg hover:shadow-indigo-500/10 cursor-pointer"
+                      >
+                        Probar Gestiva gratis <ArrowRight size={16} className="text-indigo-950" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Right Column - Features Grid (2x2) */}
+                  <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[
+                      { icon: Package, title: 'Inventario inteligente', desc: 'Alertas de stock bajo y actualización automática.' },
+                      { icon: BarChart3, title: 'Reportes en tiempo real', desc: 'Ventas, gastos y ganancias al instante.' },
+                      { icon: Smartphone, title: 'Tienda virtual única', desc: 'Diseño adaptable con tu propio dominio.' },
+                      { icon: Users, title: 'Fidelización de clientes', desc: 'Base de datos y campañas integradas.' },
+                    ].map((f, i) => (
+                      <div 
+                        key={i} 
+                        className="p-5 rounded-2xl transition-all duration-300 hover:-translate-y-1"
+                        style={{ 
+                          background: 'rgba(255, 255, 255, 0.03)', 
+                          border: '1px solid rgba(255, 255, 255, 0.05)',
+                        }}
+                      >
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3 bg-indigo-500/10 border border-indigo-500/20">
+                          <f.icon size={16} className="text-indigo-400" />
+                        </div>
+                        <h4 className="text-xs font-bold text-white mb-1.5">{f.title}</h4>
+                        <p className="text-[10px] text-gray-500 leading-relaxed">{f.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                </div>
+              </div>
+            </section>
+          </Reveal>
+
+          {/* ─── TICKER #2 ─── */}
+          <div className="overflow-hidden select-none py-2.5" style={{ background: 'linear-gradient(90deg, rgba(16,185,129,0.06), rgba(52,211,153,0.06))' }}>
+            <motion.div className="flex flex-nowrap gap-12 w-max" animate={{ x: ['-50%', '0%'] }} transition={{ duration: 30, ease: 'linear', repeat: Infinity }}>
+              {[...TICKER_ITEMS_2, ...TICKER_ITEMS_2].map((t, i) => (
+                <span key={i} className="text-[10px] font-black tracking-wider text-emerald-400/60 whitespace-nowrap">{t}</span>
+              ))}
+            </motion.div>
           </div>
 
-          {/* Links Col 1 */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Enlaces rápidos</h4>
-            <div className="flex flex-col gap-2 text-xs text-gray-500 font-semibold">
-              <a href="#caracteristicas" className="hover:text-white transition-colors">Características</a>
-              <a href="#precios" className="hover:text-white transition-colors">Planes de Pago</a>
-              <a href="#soporte" className="hover:text-white transition-colors">Ayuda y Soporte</a>
-              <a href="https://gestivaone.com" target="_blank" className="hover:text-white transition-colors">Sitio corporativo</a>
-            </div>
-          </div>
+          {/* ─── RECOMENDADOS ─── */}
+          <Reveal>
+            <section className="max-w-[1440px] mx-auto px-4 py-10">
+              <SectionTitle emoji="⭐" title="Recomendados para ti" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 mt-5">
+                {featured.map(p => <ProductCard key={p.id} product={p} company={companyMap.get(p.company_id)} />)}
+              </div>
+            </section>
+          </Reveal>
 
-          {/* Links Col 2 */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Legal</h4>
-            <div className="flex flex-col gap-2 text-xs text-gray-500 font-semibold">
-              <a href="#terminos" className="hover:text-white transition-colors">Términos y condiciones</a>
-              <a href="#privacidad" className="hover:text-white transition-colors">Política de privacidad</a>
-              <a href="#cookies" className="hover:text-white transition-colors">Uso de cookies</a>
-            </div>
-          </div>
+          {/* ─── WHATSAPP ADVISOR ─── */}
+          <Reveal>
+            <section className="py-14" style={{ background: 'linear-gradient(180deg, #08080d 0%, #060a08 50%, #08080d 100%)' }}>
+              <div className="max-w-[1440px] mx-auto px-4 flex flex-col md:flex-row items-center gap-10">
+                {/* Avatar */}
+                <div className="relative shrink-0">
+                  <div className="w-24 h-24 rounded-full overflow-hidden" style={{ border: '3px solid rgba(37,211,102,0.3)' }}>
+                    <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80"
+                      alt="Asesora" className="w-full h-full object-cover" />
+                  </div>
+                  <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full animate-pulse" style={{ background: '#25d366', border: '2px solid #08080d' }} />
+                </div>
+
+                {/* Chat simulation */}
+                <div className="flex-1 space-y-3 max-w-lg">
+                  <div className="rounded-2xl rounded-bl-sm px-4 py-3 text-xs text-gray-300 leading-relaxed max-w-sm"
+                    style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    ¡Hola! 👋 Soy Carolina del equipo de Gestiva. ¿Necesitas ayuda para crear tu tienda o configurar tus productos?
+                  </div>
+                  <div className="rounded-2xl rounded-bl-sm px-4 py-3 text-xs text-gray-300 leading-relaxed max-w-xs"
+                    style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    Te acompaño en todo el proceso, sin costo 💚
+                  </div>
+                </div>
+
+                {/* CTA */}
+                <div className="shrink-0 text-center md:text-right space-y-3">
+                  <h3 className="text-lg font-black text-white">¿Necesitas ayuda?</h3>
+                  <p className="text-xs text-gray-400 max-w-xs leading-relaxed">
+                    Configuramos tu tienda, subimos tus productos y te acompañamos sin costo.
+                  </p>
+                  <a href="https://wa.me/573022034253?text=Hola!%20Necesito%20ayuda%20para%20crear%20mi%20tienda%20en%20Gestiva"
+                    target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white cursor-pointer transition-transform hover:scale-105 active:scale-95"
+                    style={{ background: '#25d366', boxShadow: '0 4px 20px rgba(37,211,102,0.25)' }}>
+                    <MessageSquare size={16} /> Hablar por WhatsApp
+                  </a>
+                </div>
+              </div>
+            </section>
+          </Reveal>
+
+          {/* ─── BANNER GESTIVA 2 ─── */}
+          <Reveal>
+            <section className="relative overflow-hidden py-14" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #064e3b 100%)' }}>
+              <div className="max-w-[1440px] mx-auto px-4 text-center relative z-10 max-w-2xl mx-auto space-y-5">
+                <span className="inline-block px-2.5 py-0.5 rounded text-[8px] font-black tracking-widest uppercase text-emerald-300" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                  CONTRA ENTREGA EN TODO COLOMBIA
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight">
+                  Tu tienda lista para vender en minutos
+                </h2>
+                <p className="text-sm text-emerald-200/70 leading-relaxed max-w-lg mx-auto">
+                  Únete a Gestiva, sube tu catálogo y acepta pagos contra entrega automáticamente. Más de 500 negocios ya confían en nosotros.
+                </p>
+                <a href="https://gestivaone.com" target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold cursor-pointer transition-transform hover:scale-105"
+                  style={{ background: 'white', color: '#065f46' }}>
+                  Crear tienda gratis <ArrowRight size={14} />
+                </a>
+              </div>
+            </section>
+          </Reveal>
+
+          {/* ─── ENVÍO GRATIS ─── */}
+          <Reveal>
+            <section className="max-w-[1440px] mx-auto px-4 py-10">
+              <SectionTitle emoji="🚚" title="Productos con envío gratis" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 mt-5">
+                {freeShip.map(p => <ProductCard key={p.id} product={p} company={companyMap.get(p.company_id)} />)}
+              </div>
+            </section>
+          </Reveal>
+
+          {/* ─── MÁS VENDIDOS ─── */}
+          <Reveal>
+            <section className="py-10" style={{ background: '#0a0a12' }}>
+              <div className="max-w-[1440px] mx-auto px-4">
+                <SectionTitle emoji="📈" title="Más vendidos" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 mt-5">
+                  {products.slice(0, 6).map(p => <ProductCard key={p.id} product={p} company={companyMap.get(p.company_id)} />)}
+                </div>
+              </div>
+            </section>
+          </Reveal>
+
+          {/* ─── FREE TRIAL CTA ─── */}
+          <Reveal>
+            <section className="relative overflow-hidden py-16 sm:py-24" style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #4c1d95 50%, #1e1b4b 100%)' }}>
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(ellipse at center, rgba(255,255,255,0.15) 0%, transparent 60%)' }} />
+              <div className="max-w-2xl mx-auto px-4 text-center relative z-10 space-y-6">
+                <span className="inline-block px-3 py-1 rounded text-[9px] font-black tracking-widest uppercase text-white" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                  PRUEBA GESTIVA GRATIS · SIN COMPROMISO
+                </span>
+                <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight tracking-tight">
+                  Lleva tu negocio al siguiente nivel
+                </h2>
+                <p className="text-sm sm:text-base text-indigo-200/70 leading-relaxed max-w-lg mx-auto">
+                  Sin tarjeta de crédito. Configuración en minutos. Publica productos ilimitados. Tu tienda virtual lista para facturar.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+                  <a href="https://gestivaone.com/auth" target="_blank" rel="noopener noreferrer"
+                    className="px-8 py-4 rounded-xl text-sm font-black cursor-pointer transition-all hover:scale-105 active:scale-95 flex items-center gap-2 shadow-xl"
+                    style={{ background: 'white', color: '#4c1d95' }}>
+                    Crear mi tienda gratis <ArrowRight size={16} />
+                  </a>
+                </div>
+                <p className="text-[10px] text-indigo-300/50">Listo en menos de 5 minutos · Sin tarjeta · Cancela cuando quieras</p>
+              </div>
+            </section>
+          </Reveal>
+
         </div>
+      )}
 
-        <div className="max-w-[1400px] mx-auto px-4 border-t border-white/5 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center">
-          <p className="text-[10px] text-gray-600 font-medium">
-            &copy; {new Date().getFullYear()} GestivaOne. Todos los derechos reservados.
-          </p>
-          <p className="text-[10px] text-gray-600 font-medium flex items-center gap-1">
-            Diseñado con pasión en Colombia 🇨🇴
-          </p>
+      {/* ──────────────────────────────────────────
+          FOOTER
+      ────────────────────────────────────────── */}
+      <footer style={{ background: '#040407', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+        <div className="max-w-[1440px] mx-auto px-4 pt-14 pb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+            <div className="md:col-span-2 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                  <Zap size={12} className="text-white fill-white/20" />
+                </div>
+                <span className="text-sm font-black text-white">gestiva<span className="text-indigo-400">.store</span></span>
+              </div>
+              <p className="text-xs text-gray-500 leading-relaxed max-w-sm">
+                Plataforma de facturación electrónica, inventarios y e-commerce para pymes y emprendedores de Colombia.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Navegación</h4>
+              <div className="flex flex-col gap-2 text-xs text-gray-500">
+                <a href="#" className="hover:text-white transition-colors">Características</a>
+                <a href="#" className="hover:text-white transition-colors">Planes</a>
+                <a href="#soporte" className="hover:text-white transition-colors">Soporte</a>
+                <a href="https://gestivaone.com" target="_blank" className="hover:text-white transition-colors">GestivaOne.com</a>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Legal</h4>
+              <div className="flex flex-col gap-2 text-xs text-gray-500">
+                <a href="#" className="hover:text-white transition-colors">Términos y condiciones</a>
+                <a href="#" className="hover:text-white transition-colors">Política de privacidad</a>
+                <a href="#" className="hover:text-white transition-colors">Cookies</a>
+              </div>
+            </div>
+          </div>
+          <div className="mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] text-gray-600" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+            <span>&copy; {new Date().getFullYear()} GestivaOne. Todos los derechos reservados.</span>
+            <span>Hecho con pasión en Colombia 🇨🇴</span>
+          </div>
         </div>
       </footer>
 
@@ -1156,87 +811,63 @@ export default function MarketplaceHome({ initialCompanies = [], initialProducts
   )
 }
 
-/* ─── Sub-Component: Store Card (Tarjeta de Tienda Premium) ─── */
+/* ═══════════════════════════════════════════════════════════
+   SUB-COMPONENTS
+   ═══════════════════════════════════════════════════════════ */
+
+function SectionTitle({ emoji, title, link }) {
+  return (
+    <div className="flex items-center justify-between">
+      <h3 className="flex items-center gap-2 text-base font-black text-white">
+        <span>{emoji}</span> {title}
+      </h3>
+      {link && <span className="text-[11px] font-semibold text-indigo-400 cursor-pointer hover:text-indigo-300">{link}</span>}
+    </div>
+  )
+}
+
+/* ─── Store Card ─── */
 function StoreCard({ company }) {
   const accent = company.store_settings?.accent_color || '#4f46e5'
-  const desc = company.store_settings?.seo_description || 'Explora nuestra tienda oficial en Gestiva y haz tus pedidos.'
+  const desc = company.store_settings?.seo_description || 'Tienda oficial en Gestiva.'
   const rating = company.rating || 4.7
-  const reviews = company.reviews || 240
-  const productsCount = company.products_count || 14
-  
+  const reviews = company.reviews || 100
+  const count = company.products_count || 10
+
   return (
-    <Link
-      href={`/${company.store_slug}`}
-      className="group bg-surface-900 border border-white/5 hover:border-brand-500/35 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col relative shadow-md hover:shadow-xl hover:-translate-y-1"
-    >
-      {/* Banner de fondo de la tienda */}
-      <div className="h-24 relative overflow-hidden bg-surface-800 shrink-0">
+    <Link href={`/${company.store_slug}`} className="block group rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
+      style={{ background: '#0d0d18', boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>
+      {/* Banner */}
+      <div className="h-28 relative overflow-hidden">
         {company.store_settings?.banner_url ? (
-          <img
-            src={company.store_settings.banner_url}
-            alt={company.name}
-            className="w-full h-full object-cover opacity-35 group-hover:scale-105 transition-transform duration-500"
-          />
+          <img src={company.store_settings.banner_url} alt={company.name} className="w-full h-full object-cover opacity-50 group-hover:scale-105 group-hover:opacity-70 transition-all duration-500" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-r from-surface-800 to-surface-700 opacity-40" />
+          <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${accent}33, #0d0d18)` }} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-surface-900 to-transparent" />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, #0d0d18 0%, transparent 60%)' }} />
       </div>
-
-      {/* Cuerpo de la tienda */}
-      <div className="p-5 pt-0 relative flex-1 flex flex-col justify-between">
-        
-        {/* Avatar/Logo flotante */}
-        <div className="-mt-8 mb-3 flex items-end justify-between">
-          <div
-            className="w-14 h-14 rounded-2xl border-4 border-surface-900 flex items-center justify-center text-lg font-black text-white shadow-lg shrink-0 relative overflow-hidden"
-            style={{ background: `linear-gradient(135deg, ${accent}, #7c3aed)` }}
-          >
-            {(company.name || 'G').charAt(0).toUpperCase()}
-          </div>
-          
-          <span className="px-2 py-0.5 rounded-full bg-surface-800 border border-white/5 text-[9px] font-bold text-gray-400 text-center">
-            🏪 Tienda Oficial
-          </span>
+      {/* Body */}
+      <div className="px-4 pb-4 relative">
+        {/* Avatar */}
+        <div className="-mt-7 mb-2 w-12 h-12 rounded-xl flex items-center justify-center text-base font-black text-white shadow-lg"
+          style={{ background: `linear-gradient(135deg, ${accent}, #7c3aed)`, border: '3px solid #0d0d18' }}>
+          {(company.name || 'G').charAt(0)}
         </div>
-
-        <div>
-          <h4 className="text-sm font-black text-white group-hover:text-brand-400 transition-colors leading-tight truncate">
-            {company.name}
-          </h4>
-          <span className="text-[10px] text-gray-500 font-semibold tracking-tight mt-0.5 block">
-            {company.store_settings?.category || 'General'}
-          </span>
-          <p className="text-[11px] text-gray-400 leading-relaxed mt-2.5 line-clamp-2 h-9">
-            {desc}
-          </p>
-        </div>
-
-        {/* Info adicional & botón visitar */}
-        <div className="flex items-center justify-between mt-5 pt-3.5 border-t border-white/5">
-          <div className="flex flex-col gap-0.5 text-left">
-            <div className="flex items-center gap-1 text-[10px] font-bold text-gray-300">
-              <Star size={11} className="text-yellow-400 fill-yellow-400" />
-              <span>{rating}</span>
-              <span className="text-gray-500 font-semibold">({reviews})</span>
-            </div>
-            <span className="text-[9px] text-gray-500 font-medium">{productsCount} productos</span>
+        <h4 className="text-sm font-bold text-white group-hover:text-indigo-400 transition-colors truncate">{company.name}</h4>
+        <p className="text-[10px] text-gray-500 font-medium mt-0.5">{company.store_settings?.category || 'General'}</p>
+        <p className="text-[11px] text-gray-400 leading-relaxed mt-2 line-clamp-2">{desc}</p>
+        <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+          <div className="flex items-center gap-1 text-[10px] font-semibold text-gray-400">
+            <Star size={10} className="text-yellow-400 fill-yellow-400" /> {rating} <span className="text-gray-600">({reviews})</span>
           </div>
-
-          <div
-            className="px-4 py-2 rounded-lg text-[10px] font-extrabold text-white transition-all group-hover:bg-brand-500/10 cursor-pointer border border-white/5"
-            style={{ '--accent': accent }}
-          >
-            Visitar Tienda
-          </div>
+          <span className="text-[9px] text-gray-500 font-medium">{count} productos</span>
         </div>
-
       </div>
     </Link>
   )
 }
 
-/* ─── Sub-Component: Product Card (Tarjeta de Producto Premium) ─── */
+/* ─── Product Card — Estilo completo con toda la info ─── */
 function ProductCard({ product, company }) {
   const hasDiscount = product.discount_value && product.discount_value > 0
   const finalPrice = hasDiscount
@@ -1245,100 +876,79 @@ function ProductCard({ product, company }) {
       : product.price - product.discount_value
     : product.price
 
-  const discountPct = hasDiscount
+  const pct = hasDiscount
     ? product.discount_type === 'percentage'
       ? Math.round(product.discount_value)
       : Math.round((product.discount_value / product.price) * 100)
     : 0
 
-  const accentColor = company?.store_settings?.accent_color || '#4f46e5'
-  const imageUrl = product.image_url && product.image_url !== 'none' ? product.image_url : null
-  const rating = product.rating || 4.7
-  const reviews = product.reviews || 48
-  const freeShipping = product.free_shipping || product.price >= 199900
+  const img = product.image_url && product.image_url !== 'none' ? product.image_url : null
+  const rating = product.rating || 4.5
+  const reviews = product.reviews || 0
+  const freeShip = product.free_shipping || product.price >= 199900
+  const storeName = company?.name || 'Tienda'
+  const category = product.category || ''
 
   return (
-    <Link
-      href={`/${company?.store_slug}/p/${product.id}`}
-      className="group bg-surface-900 border border-white/5 hover:border-brand-500/35 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col relative shadow-md hover:shadow-xl hover:-translate-y-1"
-    >
-      {/* Imagen del Producto */}
-      <div className="aspect-square bg-surface-800 relative overflow-hidden shrink-0">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={product.name}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+    <Link href={`/${company?.store_slug || 'tienda'}/p/${product.id}`}
+      className="block group rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1.5"
+      style={{ background: '#0d0d18', boxShadow: '0 2px 12px rgba(0,0,0,0.25)' }}>
+
+      {/* IMAGE */}
+      <div className="relative aspect-square overflow-hidden" style={{ background: '#111118' }}>
+        {img ? (
+          <img src={img} alt={product.name} loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-3xl opacity-35 bg-gradient-to-br from-surface-800 to-surface-700">
-            📦
-          </div>
+          <div className="w-full h-full flex items-center justify-center text-4xl opacity-20">📦</div>
         )}
 
-        {/* Badges Flotantes */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10">
-          {hasDiscount && discountPct > 0 && (
-            <span className="bg-danger-500 text-white font-extrabold text-[9px] uppercase px-2 py-0.5 rounded-md flex items-center gap-0.5">
-              <Percent size={9} />
-              -{discountPct}%
-            </span>
-          )}
-          {product.featured && (
-            <span className="bg-yellow-500 text-black font-extrabold text-[8px] uppercase px-2 py-0.5 rounded-md flex items-center gap-0.5">
-              ⭐ DESTACADO
-            </span>
-          )}
-        </div>
+        {/* Discount badge */}
+        {hasDiscount && pct > 0 && (
+          <span className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-black text-white"
+            style={{ background: '#ef4444' }}>
+            -{pct}%
+          </span>
+        )}
+
+        {/* Free shipping badge */}
+        {freeShip && (
+          <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[8px] font-bold text-emerald-300 flex items-center gap-0.5"
+            style={{ background: 'rgba(16,185,129,0.15)', backdropFilter: 'blur(4px)' }}>
+            <Truck size={9} /> Envío gratis
+          </span>
+        )}
       </div>
 
-      {/* Cuerpo del Producto */}
-      <div className="p-4 flex-1 flex flex-col justify-between">
-        <div>
-          
-          {/* Tienda origen y Categoría */}
-          <div className="flex items-center justify-between gap-2 mb-1 text-[9px] font-semibold text-gray-500">
-            <span className="uppercase tracking-wider">{product.category || 'Catálogo'}</span>
-            <span className="text-brand-400 font-extrabold truncate max-w-[70px]">
-              {company?.name || 'Tienda'}
-            </span>
-          </div>
-
-          <h4 className="text-xs font-bold text-gray-200 line-clamp-2 leading-snug group-hover:text-white transition-colors h-8">
-            {product.name}
-          </h4>
-
-          {/* Rating */}
-          <div className="flex items-center gap-1 mt-2 text-[9px] text-gray-400 font-bold">
-            <Star size={10} className="text-yellow-400 fill-yellow-400" />
-            <span>{rating}</span>
-            <span className="text-gray-600 font-medium">({reviews})</span>
-          </div>
+      {/* INFO — completa */}
+      <div className="p-3.5 space-y-2">
+        {/* Category + Store name row */}
+        <div className="flex items-center justify-between gap-2">
+          {category && (
+            <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-400 truncate">{category}</span>
+          )}
+          <span className="text-[9px] font-semibold text-gray-500 truncate max-w-[100px] text-right">{storeName}</span>
         </div>
 
-        {/* Precios & Envíos */}
-        <div className="mt-4 pt-3 border-t border-white/5">
-          <div className="flex items-baseline gap-1.5 flex-wrap">
-            <span className="text-sm font-black text-white">{fCOP(finalPrice)}</span>
-            {hasDiscount && (
-              <span className="text-[10px] text-gray-500 line-through font-semibold">
-                {fCOP(product.price)}
-              </span>
-            )}
-          </div>
+        {/* Product name — full, 2 lines */}
+        <h4 className="text-[12px] font-bold text-white leading-snug line-clamp-2 min-h-[34px] group-hover:text-indigo-300 transition-colors">
+          {product.name}
+        </h4>
 
-          {/* Shipping badge */}
-          <div className="min-h-[14px] mt-1.5">
-            {freeShipping && (
-              <span className="inline-flex items-center gap-1 text-[8px] font-black text-emerald-400 tracking-wider">
-                <Truck size={10} />
-                ENVÍO GRATIS
-              </span>
-            )}
-          </div>
+        {/* Rating + reviews */}
+        <div className="flex items-center gap-1.5">
+          <Star size={11} className="text-yellow-400 fill-yellow-400" />
+          <span className="text-[11px] font-bold text-white">{rating}</span>
+          {reviews > 0 && <span className="text-[10px] text-gray-500">({reviews})</span>}
         </div>
 
+        {/* Price */}
+        <div className="pt-1 space-y-0.5">
+          {hasDiscount && (
+            <span className="text-[10px] text-gray-500 line-through block">{fCOP(product.price)}</span>
+          )}
+          <span className="text-base font-black text-white">{fCOP(finalPrice)}</span>
+        </div>
       </div>
     </Link>
   )

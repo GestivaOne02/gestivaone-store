@@ -4,7 +4,7 @@ import StoreHeader from '@/components/store/StoreHeader'
 import ProductViewClient from '@/components/store/ProductViewClient'
 import { ChevronRight, ArrowLeft, AlertCircle } from 'lucide-react'
 
-export const revalidate = 60 // Cache for 60 seconds
+export const dynamic = 'force-dynamic'
 
 async function getProductAndStore(store_slug, product_id) {
   // 1. Fetch Company

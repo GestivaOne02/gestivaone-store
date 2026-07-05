@@ -3,8 +3,8 @@ import StoreHeader from '@/components/store/StoreHeader'
 import ProductCard from '@/components/store/ProductCard'
 import { AlertCircle, Archive } from 'lucide-react'
 
-// Dynamic rendering
-export const revalidate = 60 // Cache for 60 seconds
+// Force dynamic rendering to fetch fresh data on every request
+export const dynamic = 'force-dynamic'
 
 async function getStoreData(store_slug) {
   // Query company details

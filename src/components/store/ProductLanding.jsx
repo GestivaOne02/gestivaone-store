@@ -154,7 +154,7 @@ function OfferCard({ offer, basePrice, selected, onSelect, color }) {
       whileHover={{ scale: 1.01 }} whileTap={{ scale:0.99 }}
       onClick={() => onSelect({ qty:offer.qty, discount:offer.discount })}
       style={{
-        width:'100%', textAlign:'left', cursor:'pointer', padding:'0.75rem 1rem', borderRadius:'0.85rem',
+        width:'100%', textAlign:'left', cursor:'pointer', padding:'0.85rem 1rem', borderRadius:'0.85rem',
         border: isSelected ? `2px solid ${color}` : '2px solid rgba(255,255,255,0.06)',
         background: isSelected ? `linear-gradient(135deg, ${color}12, ${color}06)` : 'rgba(255,255,255,0.02)',
         position:'relative', overflow:'hidden', transition:'border-color 0.2s, background 0.2s',
@@ -162,19 +162,21 @@ function OfferCard({ offer, basePrice, selected, onSelect, color }) {
       }}
     >
       {isSelected && <motion.div layoutId="selectedBar" style={{ position:'absolute', top:0, left:0, right:0, height:'2px', background:`linear-gradient(90deg,${color},#7c3aed)` }} />}
-      {offer.tag && (
-        <span style={{ position:'absolute', top:'0.5rem', right:'0.6rem', fontSize:'0.55rem', fontWeight:900, color: offer.tag === 'MEJOR VALOR' ? '#34d399' : '#fbbf24', background: offer.tag === 'MEJOR VALOR' ? 'rgba(52,211,153,0.12)' : 'rgba(251,191,36,0.12)', border:`1px solid ${offer.tag === 'MEJOR VALOR' ? 'rgba(52,211,153,0.3)' : 'rgba(251,191,36,0.3)'}`, borderRadius:'4px', padding:'0.1rem 0.35rem', letterSpacing:'0.04em' }}>
-          {offer.tag}
-        </span>
-      )}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'0.75rem' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'0.65rem' }}>
           <div style={{ width:'1.3rem', height:'1.3rem', borderRadius:'50%', border:`2px solid ${isSelected ? color : 'rgba(255,255,255,0.15)'}`, background: isSelected ? color : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'all 0.2s' }}>
             {isSelected && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
           </div>
           <div>
-            <div style={{ fontWeight:800, fontSize:'0.825rem', color:'#fff' }}>{offer.label}</div>
-            <div style={{ fontSize:'0.65rem', color: savings > 0 ? '#34d399' : '#9ca3af', fontWeight:600, marginTop:'0.05rem' }}>
+            <div style={{ fontWeight:800, fontSize:'0.825rem', color:'#fff', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+              <span>{offer.label}</span>
+              {offer.tag && (
+                <span style={{ fontSize:'0.55rem', fontWeight:900, color: offer.tag === 'MEJOR VALOR' ? '#34d399' : '#fbbf24', background: offer.tag === 'MEJOR VALOR' ? 'rgba(52,211,153,0.12)' : 'rgba(251,191,36,0.12)', border:`1px solid ${offer.tag === 'MEJOR VALOR' ? 'rgba(52,211,153,0.3)' : 'rgba(251,191,36,0.3)'}`, borderRadius:'4px', padding:'0.1rem 0.35rem', letterSpacing:'0.04em', lineHeight: 1 }}>
+                  {offer.tag}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize:'0.65rem', color: savings > 0 ? '#34d399' : '#9ca3af', fontWeight:600, marginTop:'0.15rem' }}>
               {savings > 0 ? `Ahorras ${fCOP(savings)}` : offer.sub}
             </div>
           </div>

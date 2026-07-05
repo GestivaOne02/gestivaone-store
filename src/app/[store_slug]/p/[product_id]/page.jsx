@@ -58,7 +58,7 @@ export default async function ProductDetailPage({ params }) {
 
   return (
     <div style={{ minHeight:'100vh', background:'#0a0a0f', color:'#fff' }}>
-      <StoreHeader company={company} />
+      <StoreHeader company={company} productName={product.name} />
       <ProductLanding product={product} company={company} storeSlug={store_slug} />
     </div>
   )

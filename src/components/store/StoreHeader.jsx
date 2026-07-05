@@ -20,7 +20,7 @@ const Star = () => (
   </svg>
 )
 
-export default function StoreHeader({ company }) {
+export default function StoreHeader({ company, productName }) {
   const [scrolled, setScrolled] = useState(false)
   const accentColor = company?.store_settings?.accent_color || '#4f46e5'
 
@@ -30,21 +30,30 @@ export default function StoreHeader({ company }) {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Dynamic tab title on tab focus/unfocus
+  // Dynamic tab title on tab focus/unfocus with psychological triggers
   useEffect(() => {
     let originalTitle = document.title
     let intervalId = null
     let messageIndex = 0
 
-    const messages = [
-      '🔥 ¡No te olvides de esto!',
-      '🔥 ¡Vuelve!',
-      '🔥 ¡Tiempo limitado!'
-    ]
+    // Construct highly persuasive psychological triggers based on product context
+    const messages = productName 
+      ? [
+          `🛒 ¿Olvidaste tu ${productName}?`,
+          `🔥 ¡Alguien más está viendo tu ${productName}!`,
+          `⏳ Tu reserva de ${productName} vencerá pronto...`,
+          `⚡ Completa tu compra y paga en casa`
+        ]
+      : [
+          '🛒 ¿Te vas sin llevar nada hoy?',
+          '🔥 ¡Pago contra entrega activo!',
+          '⏳ Envíos gratis por tiempo limitado',
+          '⚡ Asegura tu producto antes de que se agote'
+        ]
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // Save current title if it's not already one of the notification titles
+        // Save current title if it's not already one of our temporary notifications
         if (!messages.includes(document.title)) {
           originalTitle = document.title
         }
@@ -55,7 +64,7 @@ export default function StoreHeader({ company }) {
         intervalId = setInterval(() => {
           messageIndex = (messageIndex + 1) % messages.length
           document.title = messages[messageIndex]
-        }, 2000)
+        }, 2200)
       } else {
         if (intervalId) {
           clearInterval(intervalId)
@@ -71,7 +80,7 @@ export default function StoreHeader({ company }) {
       if (intervalId) clearInterval(intervalId)
       document.title = originalTitle
     }
-  }, [])
+  }, [productName])
 
   const firstLetter = (company?.name || 'G').charAt(0).toUpperCase()
 

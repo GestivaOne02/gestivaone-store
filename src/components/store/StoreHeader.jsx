@@ -30,6 +30,49 @@ export default function StoreHeader({ company }) {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Dynamic tab title on tab focus/unfocus
+  useEffect(() => {
+    let originalTitle = document.title
+    let intervalId = null
+    let messageIndex = 0
+
+    const messages = [
+      '🔥 ¡No te olvides de esto!',
+      '🔥 ¡Vuelve!',
+      '🔥 ¡Tiempo limitado!'
+    ]
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Save current title if it's not already one of the notification titles
+        if (!messages.includes(document.title)) {
+          originalTitle = document.title
+        }
+        
+        messageIndex = 0
+        document.title = messages[0]
+        
+        intervalId = setInterval(() => {
+          messageIndex = (messageIndex + 1) % messages.length
+          document.title = messages[messageIndex]
+        }, 2000)
+      } else {
+        if (intervalId) {
+          clearInterval(intervalId)
+          intervalId = null
+        }
+        document.title = originalTitle
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (intervalId) clearInterval(intervalId)
+      document.title = originalTitle
+    }
+  }, [])
+
   const firstLetter = (company?.name || 'G').charAt(0).toUpperCase()
 
   return (

@@ -9,14 +9,7 @@ import {
   SlidersHorizontal, Trash2, Check, Plus, GitCompare, ArrowRight
 } from 'lucide-react'
 
-const allCats = ['Todos', 'Tecnología', 'Celulares', 'Computadores', 'Electrodomésticos', 'Hogar y Cocina', 'Moda', 'Belleza', 'Deportes', 'Juguetes', 'Mascotas', 'Automotriz']
 
-const TOP_BAR_ITEMS = [
-  { text: 'Envíos gratis en pedidos superiores a $199.900', icon: Truck, iconColor: '#34d399' },
-  { text: 'Paga con Addi, Sistecrédito o Contra entrega', icon: CreditCard, iconColor: '#fbbf24' },
-  { text: 'Garantía en todos nuestros productos', icon: ShieldCheck, iconColor: '#60a5fa' },
-  { text: 'Soporte 24/7 y asesoría personalizada', icon: PhoneCall, iconColor: '#f472b6' }
-]
 
 const formatCOP = (v) =>
   v == null ? '' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(v)
@@ -103,6 +96,36 @@ export default function MarketplaceHome({ initialCompanies = [], initialProducts
   const [catOpen, setCatOpen] = useState(false)
   const [locOpen, setLocOpen] = useState(false)
   const [location, setLocation] = useState('Ubicación')
+
+  // Dynamic categories compiled from initialProducts category field
+  const allCats = useMemo(() => {
+    const catsSet = new Set()
+    initialProducts.forEach(p => {
+      if (p.category) {
+        catsSet.add(p.category.trim())
+      }
+    })
+    return ['Todos', ...Array.from(catsSet).sort()]
+  }, [initialProducts])
+
+  // Dynamic cities compiled from initialCompanies location fields
+  const allCities = useMemo(() => {
+    const citiesSet = new Set()
+    initialCompanies.forEach(c => {
+      const cityVal = c.city || c.store_settings?.city
+      if (cityVal) {
+        citiesSet.add(cityVal.trim())
+      }
+    })
+    return Array.from(citiesSet).sort()
+  }, [initialCompanies])
+
+  // Auto-set default location to the first active city from DB if available
+  useEffect(() => {
+    if (allCities.length > 0 && location === 'Ubicación') {
+      setLocation(allCities[0])
+    }
+  }, [allCities, location])
   
   // Filter & UI States
   const [selectedBrands, setSelectedBrands] = useState([])
@@ -238,29 +261,6 @@ export default function MarketplaceHome({ initialCompanies = [], initialProducts
   return (
     <div className="min-h-screen bg-[#f8fafc] w-full font-sans antialiased text-slate-800">
       
-      {/* ──────────────────────────────────────────
-          1. TOP BAR — MARQUESINA GIRATORIA INFINITA (Fondo `#0b1329`)
-      ────────────────────────────────────────── */}
-      <div className="bg-[#0b1329] text-white border-b border-slate-800 overflow-hidden select-none py-8 shadow-sm">
-        <motion.div
-          className="flex flex-nowrap gap-20 w-max"
-          animate={{ x: ['0%', '-50%'] }}
-          transition={{ duration: 32, ease: 'linear', repeat: Infinity }}
-        >
-          {/* Double content list for seamless infinite loop */}
-          {[...Array(2)].map((_, listIdx) => (
-            <div key={listIdx} className="flex items-center gap-20 shrink-0">
-              {TOP_BAR_ITEMS.map((item, itemIdx) => (
-                <div key={itemIdx} className="flex items-center gap-4 text-base font-black uppercase tracking-widest text-slate-100">
-                  <item.icon size={20} style={{ color: item.iconColor }} className="shrink-0 stroke-[2.5]" />
-                  <span>{item.text}</span>
-                  <span className="text-slate-700 font-bold ml-8">•</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </motion.div>
-      </div>
 
       {/* ──────────────────────────────────────────
           2. HEADER — BUSCADOR PROTAGONISTA (Tema Claro, Fondo Blanco)
@@ -366,19 +366,25 @@ export default function MarketplaceHome({ initialCompanies = [], initialProducts
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Seleccionar Ciudad</span>
                   </div>
                   <div className="grid grid-cols-2 gap-1.5">
-                    {['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Bucaramanga', 'Cartagena', 'Pereira', 'Cúcuta', 'Ibagué', 'Manizales'].map(c => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => {
-                          setLocation(c)
-                          setLocOpen(false)
-                        }}
-                        className={`text-left px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 ${location === c ? 'text-white bg-[#4f46e5]' : 'text-slate-600 hover:text-[#4f46e5] hover:bg-slate-50'}`}
-                      >
-                        {c}
-                      </button>
-                    ))}
+                    {allCities.length > 0 ? (
+                      allCities.map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => {
+                            setLocation(c)
+                            setLocOpen(false)
+                          }}
+                          className={`text-left px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 ${location === c ? 'text-white bg-[#4f46e5]' : 'text-slate-600 hover:text-[#4f46e5] hover:bg-slate-50'}`}
+                        >
+                          {c}
+                        </button>
+                      ))
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-bold col-span-2 text-center py-2">
+                        No hay ciudades disponibles
+                      </span>
+                    )}
                   </div>
                 </motion.div>
               )}

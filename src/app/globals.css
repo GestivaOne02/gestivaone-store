@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+/* ─── Comments & Design Tokens ─── */
+/* ═══════════════════════════════════════════════
+   GESTIVA STORE — Design Tokens
+═══════════════════════════════════════════════ */
+:root {
+  --brand-50:  #e0e7ff;
+  --brand-100: #c7d2fe;
+  --brand-200: #a5b4fc;
+  --brand-300: #818cf8;
+  --brand-400: #6366f1;
+  --brand-500: #4f46e5;
+  --brand-600: #4338ca;
+  --brand-700: #3730a3;
+
+  --surface-900: #0a0a0f;
+  --surface-800: #0f0f18;
+  --surface-750: #13131e;
+  --surface-700: #191926;
+  --surface-600: #1e1e2e;
+  --surface-500: #252538;
+  --surface-400: #2e2e45;
+  --surface-300: #383856;
+
+  --text-primary: #ffffff;
+  --text-muted:   #9ca3af;
+  --text-subtle:  #6b7280;
+
+  --border-subtle: rgba(255,255,255,0.06);
+  --glass-bg:      rgba(19,19,30,0.85);
+
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger:  #ef4444;
+
+  --ease-spring:   cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ═══════════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--surface-900);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: var(--surface-400); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--brand-500); }
+
+/* ─── Selection ─── */
+::selection { background: var(--brand-500); color: #fff; }
+
+/* ─── Focus ─── */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--brand-500), 0 0 0 4px var(--surface-800);
+}
+
+/* ═══════════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════════ */
+
+/* Glass */
+.glass {
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  background: var(--glass-bg);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Text gradient brand */
+.text-gradient {
+  background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 50%, #4f46e5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effects */
+.glow-brand {
+  box-shadow: 0 0 30px rgba(99,102,241,0.3), 0 0 60px rgba(99,102,241,0.1);
+}
+
+.glow-success {
+  box-shadow: 0 0 20px rgba(16,185,129,0.35);
+}
+
+/* Animate in */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(1);    opacity: 1; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+.animate-slide-up { animation: slideUp 0.4s var(--ease-out-expo) forwards; }
+.animate-fade-in  { animation: fadeIn  0.35s ease forwards; }
+
+/* Shimmer skeleton */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-700) 25%, var(--surface-500) 50%, var(--surface-700) 75%);
+  background-size: 200% auto;
+  animation: shimmer 1.5s linear infinite;
+  border-radius: 0.5rem;
+}
+
+/* No scrollbar */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Image fluid */
+img { max-width: 100%; height: auto; }
+
+/* Transitions */
+button, a, [role="button"] {
+  transition: all 200ms var(--ease-out-expo);
+}

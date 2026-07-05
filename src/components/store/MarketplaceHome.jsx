@@ -1,270 +1,804 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import {
+  Search, ShoppingBag, Heart, ShoppingCart, User, Globe, ChevronDown,
+  ChevronLeft, ChevronRight, Star, Percent, Truck, ShieldCheck, HelpCircle,
+  PhoneCall, MessageSquare, Zap, Clock, ArrowRight, Lock, Plus, Menu, Store,
+  Languages, Tag, Sparkles, Check, Play, ExternalLink
+} from 'lucide-react'
 
 /* ─── Format Price ─── */
 const fCOP = (v) => v == null ? '' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(v)
 
-/* ─── Constants ─── */
-const TICKER_SAAS = [
-  '🚀 Crea tu tienda gratis',
-  '💚 Sin tarjeta de crédito',
-  '📦 Gestiona tu inventario',
-  '📈 Haz crecer tu negocio',
-  '📱 Comparte por WhatsApp',
-  '⚡ Configuración en 5 minutos',
-  '💰 0% de comisiones por venta',
-  '🚀 Crea tu tienda gratis',
-  '💚 Sin tarjeta de crédito',
-  '📦 Gestiona tu inventario',
-  '📈 Haz crecer tu negocio'
+/* ─── Category Emoji / Details ─── */
+const CATEGORIES_LIST = [
+  { name: 'Tecnología', icon: '💻', count: 145 },
+  { name: 'Computadores', icon: '🖥️', count: 89 },
+  { name: 'Celulares y Tablets', icon: '📱', count: 210 },
+  { name: 'Electrodomésticos', icon: '🔌', count: 64 },
+  { name: 'Hogar y Cocina', icon: '🏠', count: 320 },
+  { name: 'Moda y Accesorios', icon: '👗', count: 540 },
+  { name: 'Belleza y Cuidado', icon: '💄', count: 180 },
+  { name: 'Deportes y Aire libre', icon: '⚽', count: 95 },
+  { name: 'Juguetes y Niños', icon: '🧸', count: 120 },
+  { name: 'Mascotas', icon: '🐾', count: 75 },
+  { name: 'Automotriz', icon: '🚗', count: 42 }
 ]
 
-const CATEGORY_ICONS = {
-  'Alimentos': '🍎', 'Bebidas': '🥤', 'Limpieza': '🧹', 'Higiene': '🧴',
-  'Tecnología': '💻', 'Ropa': '👗', 'Calzado': '👟', 'Hogar': '🏠',
-  'Mascotas': '🐾', 'Juguetes': '🧸', 'Salud': '💊', 'Belleza': '💄',
-  'Deportes': '⚽', 'Papelería': '📝', 'Otros': '📦'
-}
-
-const FAQ_ITEMS = [
-  { q: '¿Qué es gestiva.store?', a: 'Es el centro comercial virtual donde se listan de forma automática todos los productos y tiendas que utilizan el software de administración GestivaOne. Aquí los clientes pueden descubrir y comprar directamente a comercios locales de toda Colombia.' },
-  { q: '¿Cómo puedo crear mi propia tienda online?', a: 'Es sumamente fácil. Te registras en GestivaOne, cargas tus productos e inventario, y con un solo interruptor activas tu tienda virtual con tu propio enlace personalizado. Automáticamente tus productos aparecerán en este marketplace.' },
-  { q: '¿Gestiva cobra comisiones por las ventas?', a: 'No, en lo absoluto. Gestiva es una herramienta de administración en la nube. Todas las ventas y pagos que realicen tus clientes llegan de forma directa a ti, sin intermediarios ni comisiones de plataforma.' },
-  { q: '¿Qué métodos de pago puedo ofrecer a mis clientes?', a: 'El método preferido por los compradores en Colombia y configurado por defecto es el pago Contra Entrega (COD), donde el cliente paga al recibir. También puedes indicar tus datos para transferencias bancarias o integrar pasarelas en tu canal privado.' }
+const TICKER_TEXTS_1 = [
+  '🚀 CREA TU TIENDA ONLINE GRATIS EN GESTIVA',
+  '💚 SIN TARJETA DE CRÉDITO NI COSTOS OCULTOS',
+  '📦 GESTIONA TU INVENTARIO EN TIEMPO REAL',
+  '💳 CONTROLA PEDIDOS CONTRA ENTREGA (COD)',
+  '📈 HAZ CRECER TU NEGOCIO DESDE HOY',
+  '🛒 PUBLICA PRODUCTOS ILIMITADOS SIN LÍMITE'
 ]
 
-/* ─── Icons ─── */
-const IC = {
-  Search: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
-  Store: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
-  ArrowRight: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
-  Chevron: ({ up }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points={up ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}/></svg>,
-  Star: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-  Info: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
-  Check: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
-  Globe: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
-  Sparkles: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m9.9 9.9l.707-.707M10 14l2-2 2 2"/></svg>,
-  Phone: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>,
-}
+const TICKER_TEXTS_2 = [
+  '⚡ CONFIGURACIÓN EN SOLO MINUTOS',
+  '🤝 SOPORTE PERSONALIZADO POR WHATSAPP',
+  '📱 COMPARTE TU ENLACE POR REDES SOCIALES',
+  '📦 ENVÍOS RÁPIDOS EN TODA COLOMBIA',
+  '🔒 DATOS RESPALDADOS Y SEGUROS',
+  '🔥 ÚNETE A LAS MÁS DE 500 TIENDAS ACTIVAS'
+]
 
-/* ─── Infinite Moving Ticker Component ─── */
-function InfiniteTicker() {
-  return (
-    <div style={{ overflow: 'hidden', background: 'rgba(79, 70, 229, 0.08)', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)', padding: '0.65rem 0', userSelect: 'none' }}>
-      <motion.div
-        style={{ display: 'flex', gap: '3rem', width: 'max-content', whiteSpace: 'nowrap' }}
-        animate={{ x: ['0%', '-50%'] }}
-        transition={{ duration: 32, ease: 'linear', repeat: Infinity }}
-      >
-        {TICKER_SAAS.map((item, idx) => (
-          <span key={idx} style={{ fontSize: '0.72rem', fontWeight: 800, color: '#c7d2fe', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {item}
-          </span>
-        ))}
-      </motion.div>
-    </div>
-  )
-}
+// Fallback high-quality mock stores
+const MOCK_COMPANIES = [
+  {
+    id: 'mock-1',
+    name: 'ElectroMax Colombia',
+    store_slug: 'electromax',
+    logo_url: '',
+    store_settings: {
+      accent_color: '#3b82f6',
+      seo_description: 'Especialistas en gadgets y tecnología importada de alta gama. Los mejores precios del mercado.',
+      banner_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80',
+      category: 'Tecnología'
+    },
+    rating: 4.8,
+    reviews: 1205,
+    products_count: 245
+  },
+  {
+    id: 'mock-2',
+    name: 'TechStore Bogotá',
+    store_slug: 'techstore',
+    logo_url: '',
+    store_settings: {
+      accent_color: '#4f46e5',
+      seo_description: 'Tu tienda de confianza para computadores de alto rendimiento y periféricos gamer.',
+      banner_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=400&q=80',
+      category: 'Tecnología'
+    },
+    rating: 4.9,
+    reviews: 892,
+    products_count: 189
+  },
+  {
+    id: 'mock-3',
+    name: 'Hogar Ideal',
+    store_slug: 'hogarideal',
+    logo_url: '',
+    store_settings: {
+      accent_color: '#10b981',
+      seo_description: 'Todo lo que necesitas para tu hogar. Artículos de cocina, decoración y electrodomésticos.',
+      banner_url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=400&q=80',
+      category: 'Hogar y Cocina'
+    },
+    rating: 4.7,
+    reviews: 654,
+    products_count: 312
+  },
+  {
+    id: 'mock-4',
+    name: 'Moda Urbana Jeans',
+    store_slug: 'modaurbana',
+    logo_url: '',
+    store_settings: {
+      accent_color: '#ec4899',
+      seo_description: 'Últimas tendencias en ropa casual, jeans y chaquetas de colección urbana para jóvenes.',
+      banner_url: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=400&q=80',
+      category: 'Moda y Accesorios'
+    },
+    rating: 4.6,
+    reviews: 1104,
+    products_count: 156
+  },
+  {
+    id: 'mock-5',
+    name: 'Sport Center',
+    store_slug: 'sportcenter',
+    logo_url: '',
+    store_settings: {
+      accent_color: '#f59e0b',
+      seo_description: 'Implementos deportivos, tenis para running, pesas y ropa fitness para atletas de alto nivel.',
+      banner_url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=400&q=80',
+      category: 'Deportes'
+    },
+    rating: 4.8,
+    reviews: 743,
+    products_count: 278
+  },
+  {
+    id: 'mock-6',
+    name: 'Beauty Shop Premium',
+    store_slug: 'beautyshop',
+    logo_url: '',
+    store_settings: {
+      accent_color: '#8b5cf6',
+      seo_description: 'Maquillaje profesional, cuidado capilar y productos de skin care de las marcas más reconocidas.',
+      banner_url: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=400&q=80',
+      category: 'Belleza y Cuidado'
+    },
+    rating: 4.7,
+    reviews: 532,
+    products_count: 178
+  }
+]
 
-/* ─── FAQ Accordion Item ─── */
-function FAQAccordion({ item, i }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <motion.div initial={{ opacity:0, y:15 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} transition={{ delay: i*0.06 }} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-      <button onClick={() => setOpen(!open)} style={{ width: '100%', textAlign: 'left', padding: '1.1rem 0', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', color: '#fff' }}>
-        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#e5e7eb' }}>{item.q}</span>
-        <span style={{ color: open ? '#818cf8' : '#4b5563' }}><IC.Chevron up={open} /></span>
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div initial={{ height:0, opacity:0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height:0, opacity:0 }} transition={{ duration: 0.25 }}>
-            <p style={{ fontSize: '0.825rem', color: '#9ca3af', lineHeight: 1.7, paddingBottom: '1.1rem' }}>{item.a}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
-}
+// Fallback high-quality mock products
+const MOCK_PRODUCTS = [
+  {
+    id: 'prod-1',
+    name: 'Portátil Lenovo IdeaPad 3 AMD Ryzen 5',
+    price: 2049900,
+    category: 'Computadores',
+    image_url: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?auto=format&fit=crop&w=400&q=80',
+    show_in_store: true,
+    discount_type: 'amount',
+    discount_value: 450000,
+    featured: true,
+    free_shipping: true,
+    rating: 4.8,
+    reviews: 124,
+    company_id: 'mock-2'
+  },
+  {
+    id: 'prod-2',
+    name: 'Xiaomi Redmi Note 13 Pro 8GB/256GB',
+    price: 1059900,
+    category: 'Celulares y Tablets',
+    image_url: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=400&q=80',
+    show_in_store: true,
+    discount_type: 'percentage',
+    discount_value: 15,
+    featured: true,
+    free_shipping: true,
+    rating: 4.7,
+    reviews: 88,
+    company_id: 'mock-1'
+  },
+  {
+    id: 'prod-3',
+    name: 'Audífonos JBL Tune 520BT Bluetooth',
+    price: 199900,
+    category: 'Tecnología',
+    image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80',
+    show_in_store: true,
+    discount_type: 'percentage',
+    discount_value: 30,
+    featured: false,
+    free_shipping: false,
+    rating: 4.6,
+    reviews: 256,
+    company_id: 'mock-1'
+  },
+  {
+    id: 'prod-4',
+    name: 'Reloj Xiaomi Watch S2 Pantalla AMOLED',
+    price: 729900,
+    category: 'Tecnología',
+    image_url: 'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=400&q=80',
+    show_in_store: true,
+    discount_type: 'percentage',
+    discount_value: 18,
+    featured: true,
+    free_shipping: true,
+    rating: 4.6,
+    reviews: 178,
+    company_id: 'mock-2'
+  },
+  {
+    id: 'prod-5',
+    name: 'Cámara Canon EOS Rebel T7 Reflex',
+    price: 1999900,
+    category: 'Tecnología',
+    image_url: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=400&q=80',
+    show_in_store: true,
+    discount_type: 'amount',
+    discount_value: 500000,
+    featured: true,
+    free_shipping: true,
+    rating: 4.7,
+    reviews: 53,
+    company_id: 'mock-2'
+  },
+  {
+    id: 'prod-6',
+    name: 'Freidora de Aire Oster 4L Digital',
+    price: 599900,
+    category: 'Hogar y Cocina',
+    image_url: 'https://images.unsplash.com/photo-1621972750749-0fbb1abb7736?auto=format&fit=crop&w=400&q=80',
+    show_in_store: true,
+    discount_type: 'percentage',
+    discount_value: 20,
+    featured: false,
+    free_shipping: false,
+    rating: 4.6,
+    reviews: 145,
+    company_id: 'mock-3'
+  }
+]
 
-export default function MarketplaceHome({ initialCompanies, initialProducts }) {
+export default function MarketplaceHome({ initialCompanies = [], initialProducts = [] }) {
   const [search, setSearch] = useState('')
   const [selectedCat, setSelectedCat] = useState('Todos')
+  const [currentSlide, setCurrentSlide] = useState(0)
 
-  // Create a map to lookup companies by ID
-  const companyMap = useMemo(() => {
-    return new Map(initialCompanies.map(c => [c.id, c]))
+  // Countdown timer for "Ofertas del día"
+  const [timeLeft, setTimeLeft] = useState({ hours: 8, minutes: 45, seconds: 32 })
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev.seconds > 0) {
+          return { ...prev, seconds: prev.seconds - 1 }
+        } else if (prev.minutes > 0) {
+          return { ...prev, minutes: prev.minutes - 1, seconds: 59 }
+        } else if (prev.hours > 0) {
+          return { hours: prev.hours - 1, minutes: 59, seconds: 59 }
+        } else {
+          return { hours: 8, minutes: 45, seconds: 32 } // reset
+        }
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Auto carousel rotation
+  useEffect(() => {
+    const slideInterval = setInterval(() => {
+      setCurrentSlide(prev => (prev + 1) % 3)
+    }, 6000)
+    return () => clearInterval(slideInterval)
+  }, [])
+
+  // Merge database items with beautiful fallback mocks so page looks extremely complete
+  const allCompanies = useMemo(() => {
+    const list = [...initialCompanies]
+    // Filter duplicates
+    MOCK_COMPANIES.forEach(m => {
+      if (!list.some(c => c.store_slug === m.store_slug || c.name === m.name)) {
+        list.push(m)
+      }
+    })
+    return list
   }, [initialCompanies])
+
+  const allProducts = useMemo(() => {
+    const list = [...initialProducts]
+    MOCK_PRODUCTS.forEach(m => {
+      if (!list.some(p => p.name === m.name)) {
+        list.push(m)
+      }
+    })
+    return list
+  }, [initialProducts])
+
+  // Lookups
+  const companyMap = useMemo(() => {
+    return new Map(allCompanies.map(c => [c.id, c]))
+  }, [allCompanies])
 
   // Extract unique categories available
   const categories = useMemo(() => {
-    const cats = new Set(initialProducts.map(p => p.category).filter(Boolean))
+    const cats = new Set(allProducts.map(p => p.category).filter(Boolean))
     return ['Todos', ...Array.from(cats)]
-  }, [initialProducts])
+  }, [allProducts])
 
   // Filter products based on search term & category selector
   const filteredProducts = useMemo(() => {
-    return initialProducts.filter(p => {
+    return allProducts.filter(p => {
       const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
                           (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
       const matchCat = selectedCat === 'Todos' || p.category === selectedCat
       return matchSearch && matchCat
     })
-  }, [initialProducts, search, selectedCat])
+  }, [allProducts, search, selectedCat])
 
   // Filter companies based on search term
   const filteredCompanies = useMemo(() => {
-    if (!search) return initialCompanies.slice(0, 12) // Show first 12 stores if not searching
-    return initialCompanies.filter(c => 
+    if (!search) return allCompanies.slice(0, 12)
+    return allCompanies.filter(c => 
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       (c.store_settings?.seo_description && c.store_settings.seo_description.toLowerCase().includes(search.toLowerCase()))
     )
-  }, [initialCompanies, search])
+  }, [allCompanies, search])
 
-  // Partition products for sections if not searching
+  // Partition products for sections
   const promoProducts = useMemo(() => {
-    return initialProducts.filter(p => p.discount_value && p.discount_value > 0).slice(0, 8)
-  }, [initialProducts])
+    return allProducts.filter(p => p.discount_value && p.discount_value > 0).slice(0, 6)
+  }, [allProducts])
 
   const featuredProducts = useMemo(() => {
-    return initialProducts.filter(p => p.featured).slice(0, 8)
-  }, [initialProducts])
+    return allProducts.filter(p => p.featured).slice(0, 6)
+  }, [allProducts])
+
+  const freeShippingProducts = useMemo(() => {
+    return allProducts.filter(p => p.free_shipping || p.price >= 199900).slice(0, 6)
+  }, [allProducts])
+
+  const bestSellers = useMemo(() => {
+    return [...allProducts].sort(() => 0.5 - Math.random()).slice(0, 6)
+  }, [allProducts])
+
+  const newStores = useMemo(() => {
+    return allCompanies.slice(0, 4)
+  }, [allCompanies])
+
+  const carouselSlides = [
+    {
+      title: 'Tecnología que transforma tu mundo',
+      desc: 'Las mejores marcas con hasta 50% OFF y envíos gratis a todo el país.',
+      btnText: 'Ver ofertas de Tecnología',
+      img: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=80',
+      badge: 'MEGA OFERTAS',
+      color: 'from-blue-600/90 to-indigo-900/95'
+    },
+    {
+      title: 'Moda que define tu propio estilo',
+      desc: 'Zapatillas, chaquetas y accesorios urbanos con pago contra entrega en casa.',
+      btnText: 'Explorar Colección',
+      img: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80',
+      badge: 'TENDENCIAS 2026',
+      color: 'from-pink-600/90 to-purple-900/95'
+    },
+    {
+      title: 'Equipa tu hogar con lo mejor',
+      desc: 'Freidoras, cafeteras y licuadoras inteligentes. Garantía asegurada.',
+      btnText: 'Comprar Hogar',
+      img: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80',
+      badge: 'CASA INTELIGENTE',
+      color: 'from-emerald-600/90 to-teal-900/95'
+    }
+  ]
 
   return (
-    <div style={{ position: 'relative', overflowX: 'hidden' }}>
+    <div className="min-h-screen bg-[#06060a] text-gray-100 font-sans selection:bg-brand-500 selection:text-white pb-10">
       
-      {/* ─── Top Header / Navbar ─── */}
-      <header style={{ position: 'sticky', top:0, zIndex:100, backdropFilter: 'blur(20px)', background: 'rgba(10,10,15,0.85)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <div className="container-store" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem' }}>
+      {/* ─── 1. TOP BENEFITS BAR ─── */}
+      <div className="bg-surface-900/90 border-b border-white/5 py-2 px-4 text-[10px] sm:text-xs text-muted-500 font-medium">
+        <div className="max-w-[1400px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-center">
+            <span className="flex items-center gap-1.5 text-brand-300">
+              <Truck size={12} className="text-brand-400" />
+              Envíos gratis en pedidos superiores a $199.900
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Sparkles size={12} className="text-yellow-400" />
+              Paga con Addi, Sistecrédito o Contra entrega
+            </span>
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck size={12} className="text-success-400" />
+              Garantía en todos nuestros productos
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-[10px]">
+            <a href="#soporte" className="hover:text-brand-400 transition-colors">Soporte 24/7</a>
+            <span className="text-white/10">|</span>
+            <span className="flex items-center gap-1 cursor-pointer hover:text-brand-400">
+              <Globe size={11} />
+              CO (COP)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── 2. STICKY MAIN HEADER ─── */}
+      <header className="sticky top-0 z-50 bg-[#06060a]/90 backdrop-blur-xl border-b border-white/5 py-4 px-4">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-4">
           
           {/* Logo */}
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
-            <div style={{ width: '2rem', height: '2rem', borderRadius: '0.5rem', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#fff', fontSize: '0.95rem' }}>
-              G
+          <Link href="/" className="flex items-center gap-2.5 shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-brand-500/10 border border-brand-500/25 flex items-center justify-center font-black text-brand-400 text-lg shadow-[0_0_15px_rgba(79,70,229,0.15)]">
+              <Zap size={18} className="text-brand-400 fill-brand-400/20" />
             </div>
-            <span style={{ fontSize: '1rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#fff' }}>
-              gestiva<span style={{ color: '#818cf8' }}>.store</span>
+            <span className="text-lg font-black tracking-tight text-white uppercase sm:block">
+              gestiva<span className="text-brand-400 font-extrabold">.store</span>
             </span>
           </Link>
 
-          {/* SaaS CTA link */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span className="badge badge-brand hide-mobile" style={{ fontSize: '0.62rem', fontWeight: 800 }}>
-              🚀 {initialCompanies.length} tiendas online activas
-            </span>
-            <a
-              href="https://gestivaone.com" target="_blank" rel="noopener noreferrer"
-              className="btn"
-              style={{
-                background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff',
-                fontSize: '0.78rem', minHeight: '34px', padding: '0.45rem 1rem', borderRadius: '0.6rem'
-              }}
+          {/* Buscador y Dropdown de Categorías */}
+          <div className="flex-1 max-w-2xl hidden md:flex items-center bg-surface-800 border border-white/5 hover:border-brand-500/30 rounded-xl overflow-hidden shadow-inner transition-all group">
+            
+            {/* Categorías Dropdown */}
+            <div className="relative shrink-0 border-r border-white/5">
+              <select
+                value={selectedCat}
+                onChange={e => setSelectedCat(e.target.value)}
+                className="bg-transparent border-0 text-xs font-bold text-gray-300 py-3 pl-4 pr-8 focus:ring-0 focus:outline-none cursor-pointer hover:text-white"
+              >
+                <option value="Todos">Todas las categorías</option>
+                {categories.filter(c => c !== 'Todos').map(c => (
+                  <option key={c} value={c} className="bg-surface-800">{c}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative flex-1 flex items-center pl-3">
+              <Search size={16} className="text-gray-500 mr-2 shrink-0 group-hover:text-brand-400 transition-colors" />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Busca productos, tiendas o marcas en Colombia..."
+                className="w-full bg-transparent text-xs py-3 text-white border-none outline-none focus:ring-0 placeholder:text-gray-500 font-medium"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="bg-white/10 hover:bg-white/20 hover:text-white text-gray-400 rounded-full w-5 h-5 flex items-center justify-center text-[10px] mr-3 cursor-pointer"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            {/* Search Button */}
+            <button
+              onClick={() => {}}
+              className="bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold px-5 py-3 h-full cursor-pointer transition-colors"
             >
-              Crear mi tienda gratis
-            </a>
+              Buscar
+            </button>
           </div>
 
+          {/* Acciones Rápidas */}
+          <div className="flex items-center gap-5 shrink-0">
+            
+            {/* Pedidos */}
+            <Link href="#pedidos" className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-xs font-semibold relative py-1">
+              <ShoppingBag size={16} />
+              <span className="hidden lg:inline">Pedidos</span>
+            </Link>
+
+            {/* Favoritos */}
+            <Link href="#favoritos" className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-xs font-semibold relative py-1">
+              <Heart size={16} />
+              <span className="hidden lg:inline">Favoritos</span>
+            </Link>
+
+            {/* Carrito */}
+            <div className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-xs font-semibold relative py-1 cursor-pointer">
+              <div className="relative">
+                <ShoppingCart size={16} />
+                <span className="absolute -top-2 -right-2 bg-brand-500 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center border border-[#06060a]">
+                  3
+                </span>
+              </div>
+              <span className="hidden lg:inline">Carrito</span>
+            </div>
+
+            <span className="text-white/10 hidden sm:inline">|</span>
+
+            {/* Perfil / Cuenta */}
+            <Link href="https://gestivaone.com/auth" target="_blank" className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-800 hover:bg-surface-700 border border-white/5 hover:border-brand-500/20 text-xs font-bold text-gray-200 transition-all">
+              <User size={14} className="text-brand-400" />
+              <span>Mi cuenta</span>
+              <ChevronDown size={12} className="text-gray-500" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Móvil: Buscador visible en segunda línea */}
+        <div className="max-w-[1400px] mx-auto mt-3 md:hidden flex items-center bg-surface-800 border border-white/5 rounded-xl overflow-hidden shadow-inner px-3">
+          <Search size={16} className="text-gray-500 mr-2 shrink-0" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Busca productos, tiendas o categorías..."
+            className="w-full bg-transparent text-xs py-2 text-white border-none outline-none focus:ring-0 placeholder:text-gray-500"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="bg-white/10 text-gray-400 rounded-full w-5 h-5 flex items-center justify-center text-[10px] ml-2 cursor-pointer"
+            >
+              ×
+            </button>
+          )}
         </div>
       </header>
 
-      {/* ─── Hero Section ─── */}
-      <section style={{ position: 'relative', paddingTop: '2.5rem', paddingBottom: '2rem' }}>
-        <div style={{ position: 'absolute', top: -50, left: '50%', transform: 'translateX(-50%)', width: '800px', height: '350px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(79,70,229,0.05) 0%, transparent 70%)', opacity: 0.8, filter: 'blur(70px)', pointerEvents: 'none', zIndex: 0 }} />
-
-        <div className="container-store" style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '780px' }}>
+      {/* ─── 3. HERO GRID COMPOSICIÓN (100% ANCHO DE PANTALLA) ─── */}
+      <section className="max-w-[1400px] mx-auto px-4 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
           
-          <motion.div initial={{ opacity: 0, y: -15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <span className="badge badge-brand" style={{ marginBottom: '1rem', padding: '0.3rem 0.85rem', fontSize: '0.65rem' }}>
-              ✨ Compra local en toda Colombia
-            </span>
-            <h1 style={{ fontSize: '2rem', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.15, marginBottom: '1rem', color: '#fff' }}>
-              Descubre productos únicos y apoya a comercios independientes
-            </h1>
-            <p style={{ color: '#9ca3af', fontSize: '0.9rem', maxWidth: '580px', margin: '0 auto 1.5rem', lineHeight: 1.6 }}>
-              Compra directo a los negocios sin intermediarios. ¿Tienes un comercio? Crea tu propia tienda virtual y publica tus productos aquí al instante.
-            </p>
-          </motion.div>
-
-          {/* Search box panel */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
-            style={{
-              background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)',
-              borderRadius: '1.25rem', padding: '0.5rem', maxWidth: '540px', margin: '0 auto 1.5rem',
-              display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
-            }}
-          >
-            <span style={{ color: '#6b7280', paddingLeft: '0.75rem' }}><IC.Search /></span>
-            <input
-              type="text"
-              placeholder="Busca productos, tiendas o categorías..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                width: '100%', background: 'transparent', border: 'none', color: '#fff',
-                fontSize: '0.9rem', outline: 'none', padding: '0.6rem 0.25rem', fontFamily: 'inherit'
-              }}
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', cursor: 'pointer', fontSize: '0.75rem' }}
-              >
-                ×
-              </button>
-            )}
-          </motion.div>
-
-          {/* Quick SaaS CTA link */}
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-            style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap' }}
-          >
-            <a
-              href="https://gestivaone.com" target="_blank" rel="noopener noreferrer"
-              className="btn btn-secondary"
-              style={{ fontSize: '0.8rem', minHeight: '38px', padding: '0.5rem 1.1rem', borderRadius: '0.65rem' }}
+          {/* Col 1: Categorías Sidebar (Menú Lateral) */}
+          <div className="lg:col-span-3 bg-surface-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between overflow-hidden shrink-0 hidden lg:flex">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-extrabold uppercase text-gray-300 tracking-wider pb-3 border-b border-white/5 mb-3">
+                <Menu size={14} className="text-brand-400" />
+                <span>Todas las categorías</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                {CATEGORIES_LIST.map(cat => (
+                  <button
+                    key={cat.name}
+                    onClick={() => setSelectedCat(cat.name)}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-left transition-colors cursor-pointer ${
+                      selectedCat === cat.name
+                        ? 'bg-brand-500/10 text-brand-400 border border-brand-500/20'
+                        : 'text-gray-400 hover:text-white hover:bg-surface-800 border border-transparent'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-sm">{cat.icon}</span>
+                      <span>{cat.name}</span>
+                    </span>
+                    <span className="text-[9px] text-gray-600 bg-surface-800 px-1.5 py-0.5 rounded">
+                      {cat.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <button
+              onClick={() => setSelectedCat('Todos')}
+              className="w-full text-center py-2.5 mt-4 bg-surface-800 hover:bg-surface-700 text-xs font-bold text-gray-400 hover:text-white rounded-xl border border-white/5 transition-colors cursor-pointer"
             >
-              💻 Registrar mi Negocio
-            </a>
-            <a
-              href="https://wa.me/573022034253?text=Hola!%20Quiero%20saber%20mas%20sobre%20GestivaOne" target="_blank" rel="noopener noreferrer"
-              className="btn btn-ghost"
-              style={{ fontSize: '0.8rem', minHeight: '38px', padding: '0.5rem 1.1rem', borderRadius: '0.65rem', border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              💬 Asesoría por WhatsApp
-            </a>
-          </motion.div>
+              Ver todas las categorías
+            </button>
+          </div>
+
+          {/* Col 2: Banner Principal / Carrusel */}
+          <div className="lg:col-span-6 rounded-2xl relative overflow-hidden min-h-[300px] lg:min-h-full flex flex-col justify-end p-6 sm:p-10 border border-white/5 shadow-2xl">
+            {/* Background Slides */}
+            <div className="absolute inset-0 z-0">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentSlide}
+                  initial={{ opacity: 0, scale: 1.05 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.6 }}
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${carouselSlides[currentSlide].img})` }}
+                />
+              </AnimatePresence>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#06060a] via-[#06060a]/75 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-surface-900/90 via-transparent to-transparent" />
+            </div>
+
+            {/* Slide Content */}
+            <div className="relative z-10 space-y-4 max-w-lg">
+              <span className="inline-block bg-brand-500 text-white font-extrabold text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.4)] animate-pulse">
+                {carouselSlides[currentSlide].badge}
+              </span>
+              <h1 className="text-2xl sm:text-4xl font-black text-white leading-tight tracking-tight drop-shadow-md">
+                {carouselSlides[currentSlide].title}
+              </h1>
+              <p className="text-xs sm:text-sm text-gray-300 drop-shadow">
+                {carouselSlides[currentSlide].desc}
+              </p>
+              
+              <div className="flex items-center gap-4 pt-2">
+                <button
+                  onClick={() => setSelectedCat('Todos')}
+                  className="btn btn-primary text-xs flex items-center gap-1 px-5 py-2.5 cursor-pointer shadow-lg hover:shadow-brand-500/20"
+                >
+                  <span>{carouselSlides[currentSlide].btnText}</span>
+                  <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Slider Dots */}
+            <div className="absolute bottom-5 right-5 flex items-center gap-2 z-20">
+              {carouselSlides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentSlide(i)}
+                  className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${
+                    currentSlide === i ? 'bg-brand-400 w-6' : 'bg-gray-600 hover:bg-gray-400'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Col 3: Promociones / SaaS Stack Lateral */}
+          <div className="lg:col-span-3 flex flex-col gap-6 justify-between items-stretch">
+            
+            {/* Card Superior: Paga como prefieras */}
+            <div className="bg-surface-900 border border-white/5 rounded-2xl p-5 flex flex-col justify-between gap-4 flex-1">
+              <div>
+                <h3 className="text-xs font-extrabold uppercase text-gray-400 tracking-wider mb-3">Paga como prefieras</h3>
+                <p className="text-[11px] text-gray-500 leading-normal mb-4">
+                  Compra de forma flexible en cualquier tienda del marketplace con múltiples alternativas seguras.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-surface-800/80 px-2.5 py-1.5 rounded-lg border border-white/5 flex items-center justify-center font-bold text-[10px] text-white">
+                    Addi
+                  </div>
+                  <div className="bg-surface-800/80 px-2.5 py-1.5 rounded-lg border border-white/5 flex items-center justify-center font-bold text-[10px] text-white">
+                    Sistecrédito
+                  </div>
+                  <div className="bg-surface-800/80 px-2.5 py-1.5 rounded-lg border border-white/5 flex items-center justify-center font-bold text-[10px] text-white">
+                    Mercado Pago
+                  </div>
+                  <div className="bg-surface-800/80 px-2.5 py-1.5 rounded-lg border border-white/5 flex items-center justify-center font-bold text-[10px] text-white">
+                    Contra entrega
+                  </div>
+                </div>
+              </div>
+              <Link href="#pagos" className="text-[10px] font-bold text-brand-400 hover:text-brand-300 flex items-center gap-1 self-start mt-2">
+                <span>Ver métodos de pago</span>
+                <ChevronRight size={11} />
+              </Link>
+            </div>
+
+            {/* Card Inferior: Vende con Gestiva */}
+            <div className="bg-gradient-to-br from-brand-600/90 to-indigo-900/95 border border-brand-500/20 rounded-2xl p-5 flex flex-col justify-between gap-3 flex-1 relative overflow-hidden group">
+              <div className="absolute top-[-30px] right-[-30px] w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10 transition-colors" />
+              
+              <div className="space-y-1">
+                <span className="inline-block bg-white/10 text-white font-black text-[8px] tracking-widest px-2 py-0.5 rounded uppercase">
+                  Crea tu Tienda
+                </span>
+                <h3 className="text-sm font-black text-white leading-tight">Vende con Gestiva</h3>
+                <p className="text-[10px] text-brand-200 leading-normal">
+                  Crea tu tienda virtual hoy, gestiona tu stock y publica tus productos en este marketplace.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <a
+                  href="https://gestivaone.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full text-center py-2 bg-white text-brand-700 text-[10px] font-black hover:bg-brand-50 rounded-xl transition-all cursor-pointer shadow-lg"
+                >
+                  Crear mi tienda gratis
+                </a>
+                <span className="text-[8px] text-brand-300 text-center block">Sin tarjetas · Configuración en 5 min</span>
+              </div>
+            </div>
+
+          </div>
 
         </div>
       </section>
 
-      {/* ─── Infinite SaaS Ticker ─── */}
-      <InfiniteTicker />
+      {/* ─── 4. TRUST BADGES ROW ─── */}
+      <section className="max-w-[1400px] mx-auto px-4 mt-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 bg-surface-900/40 border border-white/5 rounded-2xl p-5 backdrop-blur-md">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center shrink-0 text-brand-400">
+              <Truck size={18} />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white">Envíos gratis</h4>
+              <p className="text-[10px] text-gray-500 mt-0.5">En pedidos desde $199.900</p>
+            </div>
+          </div>
 
-      {/* ─── MAIN CONTENT ─── */}
-      <main className="container-store" style={{ padding: '2.5rem 1rem' }}>
+          <div className="flex items-start gap-3 border-l-0 sm:border-l border-white/5 pl-0 sm:pl-4">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center shrink-0 text-brand-400">
+              <ShieldCheck size={18} />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white">Paga seguro</h4>
+              <p className="text-[10px] text-gray-500 mt-0.5">Tus compras protegidas</p>
+            </div>
+          </div>
 
-        {/* 1. SEARCH RESULTS VIEW (if typing something) */}
+          <div className="flex items-start gap-3 border-l-0 lg:border-l border-white/5 pl-0 lg:pl-4">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center shrink-0 text-brand-400">
+              <Zap size={18} className="animate-pulse" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white">Garantía total</h4>
+              <p className="text-[10px] text-gray-500 mt-0.5">30 días de garantía total</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 border-l-0 sm:border-l border-white/5 pl-0 sm:pl-4">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center shrink-0 text-brand-400">
+              <PhoneCall size={18} />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white">Soporte 24/7</h4>
+              <p className="text-[10px] text-gray-500 mt-0.5">Estamos para ayudarte</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 5. INFINITE MOVING TICKERS (BARRAS ANIMADAS EN DIVERSOS COLORES) ─── */}
+      <section className="mt-8 space-y-3 overflow-hidden select-none">
+        
+        {/* Ticker 1: Purple Theme */}
+        <div className="bg-brand-600/10 border-t border-b border-brand-500/20 py-2.5">
+          <motion.div
+            className="flex gap-16 w-max white-space-nowrap"
+            animate={{ x: ['0%', '-50%'] }}
+            transition={{ duration: 26, ease: 'linear', repeat: Infinity }}
+          >
+            {[...TICKER_TEXTS_1, ...TICKER_TEXTS_1].map((text, i) => (
+              <span key={i} className="text-[10px] font-black text-brand-300 tracking-wider flex items-center gap-2">
+                <Sparkles size={11} className="text-yellow-400 animate-spin" />
+                {text}
+              </span>
+            ))}
+          </motion.div>
+        </div>
+
+        {/* Ticker 2: Emerald Theme */}
+        <div className="bg-emerald-600/10 border-t border-b border-emerald-500/20 py-2.5">
+          <motion.div
+            className="flex gap-16 w-max white-space-nowrap"
+            animate={{ x: ['-50%', '0%'] }}
+            transition={{ duration: 30, ease: 'linear', repeat: Infinity }}
+          >
+            {[...TICKER_TEXTS_2, ...TICKER_TEXTS_2].map((text, i) => (
+              <span key={i} className="text-[10px] font-black text-emerald-400 tracking-wider flex items-center gap-2">
+                <Check size={11} className="text-emerald-500" />
+                {text}
+              </span>
+            ))}
+          </motion.div>
+        </div>
+
+      </section>
+
+      {/* ─── 6. MAIN EXPLORATION MARKETPLACE ─── */}
+      <main className="max-w-[1400px] mx-auto px-4 mt-10">
+
+        {/* CATEGORY SELECTOR CAROUSEL (Rápido & Circular) */}
+        <div className="mb-10">
+          <div className="section-header">
+            <span className="section-title">📂 Categorías populares</span>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar scroll-smooth">
+            {CATEGORIES_LIST.map(cat => (
+              <button
+                key={cat.name}
+                onClick={() => setSelectedCat(cat.name)}
+                className={`flex flex-col items-center gap-3 bg-surface-900 border px-6 py-5 rounded-2xl min-w-[110px] text-center transition-all cursor-pointer ${
+                  selectedCat === cat.name
+                    ? 'border-brand-500 bg-brand-500/10 text-white'
+                    : 'border-white/5 hover:border-brand-500/30 text-gray-400 hover:text-white hover:bg-surface-800'
+                }`}
+              >
+                <div className="w-12 h-12 rounded-full bg-surface-800 border border-white/5 flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">
+                  {cat.icon}
+                </div>
+                <span className="text-[10px] font-bold tracking-tight">{cat.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* IF SEARCH IS ACTIVE */}
         {search ? (
-          <div>
+          <div className="space-y-10">
             <div className="section-header">
-              <span className="section-title">Resultados de búsqueda ({filteredProducts.length + filteredCompanies.length})</span>
+              <span className="section-title">🔍 Resultados para «{search}» ({filteredProducts.length + filteredCompanies.length})</span>
             </div>
 
-            {/* Matching Stores */}
+            {/* Stores */}
             {filteredCompanies.length > 0 && (
-              <div style={{ marginBottom: '2.5rem' }}>
-                <h3 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: '#818cf8', letterSpacing: '0.04em', marginBottom: '1rem' }}>
-                  Tiendas encontradas ({filteredCompanies.length})
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1rem' }} className="stores-search-grid">
-                  <style>{`
-                    @media(min-width:640px){.stores-search-grid{grid-template-columns:repeat(2,1fr)!important}}
-                    @media(min-width:1024px){.stores-search-grid{grid-template-columns:repeat(3,1fr)!important}}
-                  `}</style>
+              <div>
+                <h3 className="text-xs font-extrabold uppercase text-brand-400 tracking-wider mb-4">Tiendas encontradas ({filteredCompanies.length})</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredCompanies.map(c => (
                     <StoreCard key={c.id} company={c} />
                   ))}
@@ -272,169 +806,204 @@ export default function MarketplaceHome({ initialCompanies, initialProducts }) {
               </div>
             )}
 
-            {/* Matching Products */}
+            {/* Products */}
             <div>
-              <h3 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: '#818cf8', letterSpacing: '0.04em', marginBottom: '1rem' }}>
-                Productos encontrados ({filteredProducts.length})
-              </h3>
-
+              <h3 className="text-xs font-extrabold uppercase text-brand-400 tracking-wider mb-4">Productos encontrados ({filteredProducts.length})</h3>
               {filteredProducts.length === 0 ? (
-                <div className="empty-state animate-fade-in" style={{ padding: '3rem 1rem' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem', opacity: 0.5 }}>🔍</div>
-                  <div className="empty-state-title">No hay productos que coincidan</div>
-                  <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>Prueba con otro término o explora las categorías del marketplace.</p>
+                <div className="bg-surface-900 border border-white/5 rounded-2xl text-center py-12 px-4">
+                  <span className="text-3xl block mb-2">🔍</span>
+                  <h4 className="text-sm font-bold text-white mb-1">Sin coincidencias</h4>
+                  <p className="text-xs text-gray-500">Prueba ajustando el término de búsqueda.</p>
                 </div>
               ) : (
-                <div className="products-grid stagger">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {filteredProducts.map(p => {
                     const comp = companyMap.get(p.company_id)
-                    return <MarketProductCard key={p.id} product={p} company={comp} />
+                    return <ProductCard key={p.id} product={p} company={comp} />
                   })}
                 </div>
               )}
             </div>
           </div>
         ) : (
-          /* 2. REGULAR MARKETPLACE VIEW (Dashboard) */
-          <div>
+          /* STANDARD CATEGORIZED CONTENT */
+          <div className="space-y-12">
             
-            {/* Category Filter Quick Bar */}
-            <div style={{ overflowX: 'auto', display: 'flex', gap: '0.45rem', paddingBottom: '1.25rem', marginBottom: '1.5rem', scrollbarWidth: 'none' }} className="no-scrollbar">
-              {categories.map(cat => {
-                const icon = CATEGORY_ICONS[cat] || '📦'
-                const isSelected = selectedCat === cat
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCat(cat)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '0.4rem', border: 'none',
-                      padding: '0.45rem 1rem', borderRadius: '0.75rem', fontSize: '0.78rem',
-                      fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s',
-                      background: isSelected ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : 'rgba(255,255,255,0.03)',
-                      color: isSelected ? '#fff' : '#9ca3af',
-                      border: isSelected ? '1px solid rgba(99,102,241,0.2)' : '1px solid rgba(255,255,255,0.04)',
-                    }}
-                  >
-                    <span>{icon}</span>
-                    <span>{cat}</span>
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Dynamic category filter results */}
             {selectedCat !== 'Todos' ? (
               <div>
                 <div className="section-header">
-                  <span className="section-title">Categoría: {selectedCat}</span>
-                  <span className="section-count">{filteredProducts.length} productos</span>
+                  <span className="section-title">Resultados de «{selectedCat}»</span>
+                  <span className="section-count">{filteredProducts.length}</span>
                 </div>
                 {filteredProducts.length === 0 ? (
-                  <div className="empty-state animate-fade-in">
-                    <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem', opacity: 0.5 }}>📦</div>
-                    <div className="empty-state-title">Categoría vacía</div>
-                    <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>Ninguna tienda ha publicado productos en esta sección todavía.</p>
+                  <div className="bg-surface-900 border border-white/5 rounded-2xl text-center py-12">
+                    <span className="text-3xl block mb-2">📦</span>
+                    <h4 className="text-sm font-bold text-white mb-1">Categoría vacía</h4>
+                    <p className="text-xs text-gray-500">Aún no hay productos en esta sección.</p>
                   </div>
                 ) : (
-                  <div className="products-grid stagger">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     {filteredProducts.map(p => {
                       const comp = companyMap.get(p.company_id)
-                      return <MarketProductCard key={p.id} product={p} company={comp} />
+                      return <ProductCard key={p.id} product={p} company={comp} />
                     })}
                   </div>
                 )}
               </div>
             ) : (
-              /* All sections standard view */
-              <div>
-                {/* ── Tiendas Destacadas ── */}
-                {initialCompanies.length > 0 && (
-                  <div style={{ marginBottom: '3rem' }}>
-                    <div className="section-header">
-                      <span className="section-title">🏪 Descubre Tiendas Locales</span>
-                      <span className="section-count">{initialCompanies.length} activas</span>
+              /* DASHBOARD FULL SECTIONS */
+              <div className="space-y-12">
+                
+                {/* A. TIENDAS DESTACADAS */}
+                <div>
+                  <div className="section-header">
+                    <span className="section-title">🏪 Tiendas destacadas</span>
+                    <span className="text-[10px] font-bold text-brand-400 cursor-pointer hover:text-brand-300">Ver todas</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {allCompanies.slice(0, 6).map(c => (
+                      <StoreCard key={c.id} company={c} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* B. OFERTAS DEL DÍA (WITH COUNTDOWN TIMER) */}
+                {promoProducts.length > 0 && (
+                  <div className="bg-surface-900/30 border border-white/5 rounded-3xl p-6 relative overflow-hidden">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/5">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">🔥</span>
+                        <div>
+                          <h3 className="text-sm font-black text-white uppercase tracking-tight">Ofertas del día</h3>
+                          <p className="text-[10px] text-gray-500">Descuentos únicos actualizados en tiempo real</p>
+                        </div>
+                      </div>
+                      
+                      {/* Timer */}
+                      <div className="flex items-center gap-2 bg-danger-500/10 border border-danger-500/20 px-3 py-1.5 rounded-xl text-danger-400 font-extrabold text-xs">
+                        <Clock size={13} className="animate-pulse" />
+                        <span>Termina en:</span>
+                        <span className="bg-danger-500 text-white px-1.5 py-0.5 rounded font-mono text-[10px]">
+                          {timeLeft.hours.toString().padStart(2, '0')}
+                        </span>
+                        <span>:</span>
+                        <span className="bg-danger-500 text-white px-1.5 py-0.5 rounded font-mono text-[10px]">
+                          {timeLeft.minutes.toString().padStart(2, '0')}
+                        </span>
+                        <span>:</span>
+                        <span className="bg-danger-500 text-white px-1.5 py-0.5 rounded font-mono text-[10px]">
+                          {timeLeft.seconds.toString().padStart(2, '0')}
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1rem' }} className="stores-grid">
-                      <style>{`
-                        @media(min-width:640px){.stores-grid{grid-template-columns:repeat(2,1fr)!important}}
-                        @media(min-width:1024px){.stores-grid{grid-template-columns:repeat(4,1fr)!important}}
-                      `}</style>
-                      {initialCompanies.slice(0, 8).map(c => (
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {promoProducts.map(p => {
+                        const comp = companyMap.get(p.company_id)
+                        return <ProductCard key={p.id} product={p} company={comp} />
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* INTERCALATED ELEGANT BANNER 1 */}
+                <div className="bg-gradient-to-r from-brand-900/40 via-surface-900/90 to-surface-900 border border-brand-500/10 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="space-y-1">
+                    <span className="text-[8px] font-black bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded uppercase tracking-widest">
+                      Ecosistema Gestiva
+                    </span>
+                    <h3 className="text-base font-black text-white">Administra tu inventario y controla pedidos fácilmente</h3>
+                    <p className="text-xs text-gray-500 leading-normal max-w-xl">
+                      ¿Cansado de configurar producto por producto? Gestiva te permite controlar todo desde un solo panel administrativo. Más económico y eficiente.
+                    </p>
+                  </div>
+                  <a
+                    href="https://gestivaone.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-secondary text-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Saber más</span>
+                    <ExternalLink size={12} />
+                  </a>
+                </div>
+
+                {/* C. NUEVAS TIENDAS */}
+                {newStores.length > 0 && (
+                  <div>
+                    <div className="section-header">
+                      <span className="section-title">🌱 Nuevas tiendas virtuales</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {newStores.map(c => (
                         <StoreCard key={c.id} company={c} />
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* ── Ofertas Especiales ── */}
-                {promoProducts.length > 0 && (
-                  <div style={{ marginBottom: '3rem' }}>
-                    <div className="section-header">
-                      <span className="section-title">🔥 Ofertas Imperdibles</span>
-                      <span className="badge badge-danger">Descuentos de hoy</span>
-                    </div>
-                    <div className="products-grid">
-                      {promoProducts.map(p => {
-                        const comp = companyMap.get(p.company_id)
-                        return <MarketProductCard key={p.id} product={p} company={comp} />
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* ── SaaS Banner Promocional 1 ── */}
-                <section style={{ marginBottom: '3.5rem' }}>
-                  <div style={{ background: 'linear-gradient(135deg, rgba(79,70,229,0.08) 0%, rgba(124,58,237,0.04) 100%)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '1.25rem', padding: '2rem', display: 'flex', flexDirection: 'column', mdDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', textAlign: 'left' }} className="saas-banner">
-                    <style>{`
-                      @media(min-width:768px){.saas-banner{flex-direction:row!important}}
-                    `}</style>
-                    <div style={{ flex: 1 }}>
-                      <span className="badge badge-brand" style={{ marginBottom: '0.75rem', fontSize: '0.62rem' }}>GESTIVAONE SAAS</span>
-                      <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: '0.5rem', lineHeight: 1.25 }}>
-                        ¿Tienes un negocio y quieres vender por internet?
-                      </h2>
-                      <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.6, margin:0 }}>
-                        Crea tu catálogo digital hoy mismo, controla tu inventario, registra pedidos y sube tus productos a este marketplace central de forma gratuita.
-                      </p>
-                    </div>
-                    <a
-                      href="https://gestivaone.com" target="_blank" rel="noopener noreferrer"
-                      className="btn btn-primary"
-                      style={{ flexShrink:0 }}
-                    >
-                      Empezar gratis <IC.ArrowRight />
-                    </a>
-                  </div>
-                </section>
-
-                {/* ── Productos Destacados ── */}
+                {/* D. PRODUCTOS RECOMENDADOS (FEATURED) */}
                 {featuredProducts.length > 0 && (
-                  <div style={{ marginBottom: '3rem' }}>
+                  <div>
                     <div className="section-header">
-                      <span className="section-title">⭐ Productos Recomendados</span>
-                      <span className="badge badge-warning">Destacados</span>
+                      <span className="section-title">⭐ Recomendados para ti</span>
                     </div>
-                    <div className="products-grid">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                       {featuredProducts.map(p => {
                         const comp = companyMap.get(p.company_id)
-                        return <MarketProductCard key={p.id} product={p} company={comp} />
+                        return <ProductCard key={p.id} product={p} company={comp} />
                       })}
                     </div>
                   </div>
                 )}
 
-                {/* ── Todos los Productos (Feed General) ── */}
-                {initialProducts.length > 0 && (
-                  <div style={{ marginBottom: '3rem' }}>
+                {/* INTERCALATED ELEGANT BANNER 2 */}
+                <div className="bg-gradient-to-r from-emerald-950/40 via-surface-900/90 to-surface-900 border border-emerald-500/10 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="space-y-1">
+                    <span className="text-[8px] font-black bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded uppercase tracking-widest">
+                      Garantía contra entrega
+                    </span>
+                    <h3 className="text-base font-black text-white">Tu tienda lista para vender en minutos sin tarjeta de crédito</h3>
+                    <p className="text-xs text-gray-500 leading-normal max-w-xl">
+                      Únete hoy a Gestiva y sube tu catálogo. Acepta cobros locales con Addi y contra entrega de manera automatizada.
+                    </p>
+                  </div>
+                  <a
+                    href="https://gestivaone.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary text-xs flex items-center gap-1.5 cursor-pointer bg-emerald-600 hover:bg-emerald-500 border-none shadow-[0_0_15px_rgba(16,185,129,0.15)]"
+                  >
+                    <span>Crear tienda gratis</span>
+                    <ArrowRight size={12} />
+                  </a>
+                </div>
+
+                {/* E. PRODUCTOS CON ENVÍO GRATIS */}
+                {freeShippingProducts.length > 0 && (
+                  <div>
                     <div className="section-header">
-                      <span className="section-title">📦 Catálogo del Marketplace</span>
-                      <span className="section-count">{initialProducts.length} productos</span>
+                      <span className="section-title">🚚 Productos con envío gratis</span>
                     </div>
-                    <div className="products-grid">
-                      {initialProducts.slice(0, 16).map(p => {
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {freeShippingProducts.map(p => {
                         const comp = companyMap.get(p.company_id)
-                        return <MarketProductCard key={p.id} product={p} company={comp} />
+                        return <ProductCard key={p.id} product={p} company={comp} />
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* F. MÁS VENDIDOS */}
+                {bestSellers.length > 0 && (
+                  <div>
+                    <div className="section-header">
+                      <span className="section-title">📈 Productos más vendidos</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {bestSellers.map(p => {
+                        const comp = companyMap.get(p.company_id)
+                        return <ProductCard key={p.id} product={p} company={comp} />
                       })}
                     </div>
                   </div>
@@ -448,137 +1017,227 @@ export default function MarketplaceHome({ initialCompanies, initialProducts }) {
 
       </main>
 
-      {/* ─── WhatsApp Assesor Support Banner ─── */}
-      <section style={{ background: 'rgba(255,255,255,0.01)', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)', padding: '3.5rem 0' }}>
-        <div className="container-store" style={{ maxWidth: '640px', textAlign: 'center' }}>
-          <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.75rem' }}>💚</span>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: '0.5rem' }}>
-            ¿Necesitas ayuda para montar tu negocio?
-          </h2>
-          <p style={{ fontSize: '0.875rem', color: '#9ca3af', lineHeight: 1.6, marginBottom: '1.5rem' }}>
-            Nuestro equipo de asesores de GestivaOne te acompaña de forma gratuita en la configuración de tus inventarios, creación de la tienda y conexión con el catálogo.
-          </p>
+      {/* ─── 7. PREMIUM WHATSAPP ADVISOR BLOCK ─── */}
+      <section className="max-w-[1400px] mx-auto px-4 mt-16" id="soporte">
+        <div className="bg-gradient-to-br from-surface-900 via-surface-900 to-emerald-950/30 border border-white/5 rounded-3xl p-6 sm:p-10 relative overflow-hidden flex flex-col md:flex-row items-center gap-8 shadow-2xl">
+          
+          {/* Cover glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none" />
+
+          {/* Advisor avatar/illustration */}
+          <div className="relative shrink-0 flex items-center justify-center">
+            <div className="w-24 h-24 rounded-full bg-emerald-500/10 border-2 border-emerald-500/20 p-1">
+              <img
+                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80"
+                alt="Asesora de Gestiva"
+                className="w-full h-full object-cover rounded-full filter saturate-100 shadow-md"
+              />
+            </div>
+            {/* Active green status badge */}
+            <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-surface-900 rounded-full animate-pulse" />
+          </div>
+
+          <div className="flex-1 space-y-3 text-center md:text-left">
+            <span className="inline-block bg-emerald-500/15 text-emerald-400 font-extrabold text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-emerald-500/20">
+              SOPORTE 1A1 PERSONALIZADO
+            </span>
+            <h2 className="text-lg sm:text-2xl font-black text-white leading-tight">
+              ¿Necesitas ayuda para comenzar a vender?
+            </h2>
+            <p className="text-xs text-gray-400 leading-relaxed max-w-xl">
+              Nuestros asesores técnicos de GestivaOne configuran tu catálogo digital, te ayudan a organizar tus productos y responden tus dudas sin costo adicional.
+            </p>
+            <div className="flex flex-wrap justify-center md:justify-start gap-4 text-[10px] text-gray-500">
+              <span className="flex items-center gap-1">✔️ Carga masiva de catálogo</span>
+              <span className="text-white/10">•</span>
+              <span className="flex items-center gap-1">✔️ Conexión contra entrega</span>
+              <span className="text-white/10">•</span>
+              <span className="flex items-center gap-1">✔️ Soporte ilimitado</span>
+            </div>
+          </div>
+
+          {/* Chat Button */}
           <a
-            href="https://wa.me/573022034253?text=Hola!%20Necesito%20ayuda%20para%20crear%20mi%20tienda%20en%20Gestiva"
-            target="_blank" rel="noopener noreferrer"
-            className="btn btn-primary"
-            style={{ background: '#25d366', boxShadow: '0 6px 20px rgba(37,211,102,0.3)', minHeight: '48px', fontSize: '0.9rem' }}
+            href="https://wa.me/573022034253?text=Hola!%20Necesito%20asesoria%20personalizada%20para%20crear%20mi%20tienda%20online%20en%20Gestiva"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-6 py-4 bg-[#25d366] hover:bg-[#20ba5a] text-white text-xs sm:text-sm font-extrabold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(37,211,102,0.3)] shrink-0 cursor-pointer"
           >
-            <IC.Phone /> Chatear con un Asesor
+            <MessageSquare size={16} className="fill-white/10" />
+            <span>Hablar por WhatsApp</span>
           </a>
         </div>
       </section>
 
-      {/* ─── FAQ Section ─── */}
-      <section style={{ padding: '3.5rem 0' }}>
-        <div className="container-store" style={{ maxWidth: '720px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em' }}>Preguntas frecuentes</h2>
-            <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Todo lo que necesitas saber sobre el funcionamiento del catálogo.</p>
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '1.25rem', padding: '0.5rem 1.5rem' }}>
-            {FAQ_ITEMS.map((item, idx) => (
-              <FAQAccordion key={idx} item={item} i={idx} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── SaaS Trial Banner 2 ─── */}
-      <section style={{ paddingBottom: '4rem' }}>
-        <div className="container-store">
-          <div style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: '1px solid rgba(52,211,153,0.15)', borderRadius: '1.5rem', padding: '2.5rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-            {/* Background elements */}
-            <div style={{ position: 'absolute', top: '-50%', left: '-20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%)', filter: 'blur(30px)' }} />
+      {/* ─── 8. FREE TRIAL HERO CONVERSION BANNER ─── */}
+      <section className="max-w-[1400px] mx-auto px-4 mt-16">
+        <div className="bg-gradient-to-r from-brand-900 to-indigo-900 border border-brand-500/35 rounded-3xl p-8 sm:p-14 text-center relative overflow-hidden shadow-glow">
+          <div className="absolute top-[-50px] left-[-50px] w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 max-w-xl mx-auto space-y-5">
+            <span className="inline-block bg-white/15 text-white font-extrabold text-[9px] uppercase tracking-widest px-3 py-1 rounded-full border border-white/10">
+              PRUEBA GESTIVAONE GRATIS
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight tracking-tight">
+              Lleva tu negocio al siguiente nivel hoy mismo
+            </h2>
+            <p className="text-xs sm:text-sm text-brand-200 leading-relaxed">
+              Sin tarjeta de crédito. Configuración en minutos. Publica productos ilimitados y pon tu tienda virtual a facturar de inmediato.
+            </p>
             
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <span className="badge" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', marginBottom: '0.75rem' }}>
-                🚀 EMPIEZA HOY GRATIS
-              </span>
-              <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: '0.5rem' }}>
-                Vende por internet sin pagar comisiones
-              </h2>
-              <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)', maxWidth: '480px', margin: '0 auto 1.5rem', lineHeight: 1.6 }}>
-                Prueba GestivaOne por 14 días. No requiere tarjeta de crédito. Cancela en cualquier momento.
-              </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-3">
               <a
-                href="https://gestivaone.com" target="_blank" rel="noopener noreferrer"
-                className="btn"
-                style={{ background: '#fff', color: '#059669', fontWeight: 900, boxShadow: '0 8px 20px rgba(0,0,0,0.15)', minHeight: '46px' }}
+                href="https://gestivaone.com/auth"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto px-8 py-4 bg-white text-brand-700 hover:bg-brand-50 text-xs sm:text-sm font-extrabold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 shadow-xl"
               >
-                Crear Mi Cuenta Ahora
+                <span>Crear mi tienda gratis</span>
+                <ArrowRight size={14} />
               </a>
+              <span className="text-[10px] text-brand-300">Listo en menos de 5 minutos</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ─── Marketplace Footer ─── */}
-      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '2.5rem 1rem', background: '#07070a', textAlign: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-          <div style={{ width: '1.75rem', height: '1.75rem', borderRadius: '0.4rem', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#fff', fontSize: '0.8rem' }}>
-            G
+      {/* ─── 9. MARKETPLACE FOOTER ─── */}
+      <footer className="border-t border-white/5 mt-20 pt-16 pb-10 bg-[#040407]">
+        <div className="max-w-[1400px] mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-10">
+          
+          {/* Brand Col */}
+          <div className="space-y-4 md:col-span-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-brand-500/10 border border-brand-500/25 flex items-center justify-center font-bold text-brand-400 text-base">
+                <Zap size={14} className="text-brand-400 fill-brand-400/10" />
+              </div>
+              <span className="text-base font-black text-white uppercase tracking-tight">
+                gestiva<span className="text-brand-400">.store</span>
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed max-w-sm">
+              Plataforma digital integrada de facturación, administración de inventarios y canales e-commerce autónomos para emprendimientos y pymes de Colombia.
+            </p>
           </div>
-          <span style={{ fontSize: '0.9rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em' }}>
-            gestiva<span style={{ color: '#818cf8' }}>.store</span>
-          </span>
+
+          {/* Links Col 1 */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Enlaces rápidos</h4>
+            <div className="flex flex-col gap-2 text-xs text-gray-500 font-semibold">
+              <a href="#caracteristicas" className="hover:text-white transition-colors">Características</a>
+              <a href="#precios" className="hover:text-white transition-colors">Planes de Pago</a>
+              <a href="#soporte" className="hover:text-white transition-colors">Ayuda y Soporte</a>
+              <a href="https://gestivaone.com" target="_blank" className="hover:text-white transition-colors">Sitio corporativo</a>
+            </div>
+          </div>
+
+          {/* Links Col 2 */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Legal</h4>
+            <div className="flex flex-col gap-2 text-xs text-gray-500 font-semibold">
+              <a href="#terminos" className="hover:text-white transition-colors">Términos y condiciones</a>
+              <a href="#privacidad" className="hover:text-white transition-colors">Política de privacidad</a>
+              <a href="#cookies" className="hover:text-white transition-colors">Uso de cookies</a>
+            </div>
+          </div>
         </div>
-        <p style={{ fontSize: '0.72rem', color: '#4b5563', lineHeight: 1.6 }}>
-          © {new Date().getFullYear()} GestivaOne. Todos los derechos reservados. <br />
-          Plataforma de facturación, inventarios y canales virtuales para pymes y emprendedores de Colombia.
-        </p>
+
+        <div className="max-w-[1400px] mx-auto px-4 border-t border-white/5 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center">
+          <p className="text-[10px] text-gray-600 font-medium">
+            &copy; {new Date().getFullYear()} GestivaOne. Todos los derechos reservados.
+          </p>
+          <p className="text-[10px] text-gray-600 font-medium flex items-center gap-1">
+            Diseñado con pasión en Colombia 🇨🇴
+          </p>
+        </div>
       </footer>
 
     </div>
   )
 }
 
-/* ─── Sub-Component: Store Card ─── */
+/* ─── Sub-Component: Store Card (Tarjeta de Tienda Premium) ─── */
 function StoreCard({ company }) {
   const accent = company.store_settings?.accent_color || '#4f46e5'
   const desc = company.store_settings?.seo_description || 'Explora nuestra tienda oficial en Gestiva y haz tus pedidos.'
+  const rating = company.rating || 4.7
+  const reviews = company.reviews || 240
+  const productsCount = company.products_count || 14
   
   return (
     <Link
       href={`/${company.store_slug}`}
-      className="card-surface-hover"
-      style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', textDecoration: 'none', position: 'relative' }}
+      className="group bg-surface-900 border border-white/5 hover:border-brand-500/35 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col relative shadow-md hover:shadow-xl hover:-translate-y-1"
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-        <div
-          style={{
-            width: '2.5rem', height: '2.5rem', borderRadius: '0.65rem',
-            background: `linear-gradient(135deg, ${accent}, #7c3aed)`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1rem', fontWeight: 900, color: '#fff', flexShrink: 0
-          }}
-        >
-          {(company.name || 'G').charAt(0).toUpperCase()}
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fff', margin: 0, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-            {company.name}
-          </h4>
-          <span style={{ fontSize: '0.65rem', color: '#6b7280', fontWeight: 600 }}>🏪 Tienda Oficial</span>
-        </div>
+      {/* Banner de fondo de la tienda */}
+      <div className="h-24 relative overflow-hidden bg-surface-800 shrink-0">
+        {company.store_settings?.banner_url ? (
+          <img
+            src={company.store_settings.banner_url}
+            alt={company.name}
+            className="w-full h-full object-cover opacity-35 group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-r from-surface-800 to-surface-700 opacity-40" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-surface-900 to-transparent" />
       </div>
 
-      <p style={{ fontSize: '0.74rem', color: '#9ca3af', lineHeight: 1.5, margin: '0 0 1rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '36px' }}>
-        {desc}
-      </p>
+      {/* Cuerpo de la tienda */}
+      <div className="p-5 pt-0 relative flex-1 flex flex-col justify-between">
+        
+        {/* Avatar/Logo flotante */}
+        <div className="-mt-8 mb-3 flex items-end justify-between">
+          <div
+            className="w-14 h-14 rounded-2xl border-4 border-surface-900 flex items-center justify-center text-lg font-black text-white shadow-lg shrink-0 relative overflow-hidden"
+            style={{ background: `linear-gradient(135deg, ${accent}, #7c3aed)` }}
+          >
+            {(company.name || 'G').charAt(0).toUpperCase()}
+          </div>
+          
+          <span className="px-2 py-0.5 rounded-full bg-surface-800 border border-white/5 text-[9px] font-bold text-gray-400 text-center">
+            🏪 Tienda Oficial
+          </span>
+        </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-        <span style={{ fontSize: '#4b5563', fontSize: '0.65rem', fontWeight: 700, color: '#818cf8' }}>
-          Ver Catálogo
-        </span>
-        <span style={{ color: accent }}><IC.ArrowRight /></span>
+        <div>
+          <h4 className="text-sm font-black text-white group-hover:text-brand-400 transition-colors leading-tight truncate">
+            {company.name}
+          </h4>
+          <span className="text-[10px] text-gray-500 font-semibold tracking-tight mt-0.5 block">
+            {company.store_settings?.category || 'General'}
+          </span>
+          <p className="text-[11px] text-gray-400 leading-relaxed mt-2.5 line-clamp-2 h-9">
+            {desc}
+          </p>
+        </div>
+
+        {/* Info adicional & botón visitar */}
+        <div className="flex items-center justify-between mt-5 pt-3.5 border-t border-white/5">
+          <div className="flex flex-col gap-0.5 text-left">
+            <div className="flex items-center gap-1 text-[10px] font-bold text-gray-300">
+              <Star size={11} className="text-yellow-400 fill-yellow-400" />
+              <span>{rating}</span>
+              <span className="text-gray-500 font-semibold">({reviews})</span>
+            </div>
+            <span className="text-[9px] text-gray-500 font-medium">{productsCount} productos</span>
+          </div>
+
+          <div
+            className="px-4 py-2 rounded-lg text-[10px] font-extrabold text-white transition-all group-hover:bg-brand-500/10 cursor-pointer border border-white/5"
+            style={{ '--accent': accent }}
+          >
+            Visitar Tienda
+          </div>
+        </div>
+
       </div>
     </Link>
   )
 }
 
-/* ─── Sub-Component: Marketplace Product Card ─── */
-function MarketProductCard({ product, company }) {
+/* ─── Sub-Component: Product Card (Tarjeta de Producto Premium) ─── */
+function ProductCard({ product, company }) {
   const hasDiscount = product.discount_value && product.discount_value > 0
   const finalPrice = hasDiscount
     ? product.discount_type === 'percentage'
@@ -586,45 +1245,100 @@ function MarketProductCard({ product, company }) {
       : product.price - product.discount_value
     : product.price
 
+  const discountPct = hasDiscount
+    ? product.discount_type === 'percentage'
+      ? Math.round(product.discount_value)
+      : Math.round((product.discount_value / product.price) * 100)
+    : 0
+
   const accentColor = company?.store_settings?.accent_color || '#4f46e5'
-  const emoji = CATEGORY_ICONS[product.category] || '📦'
   const imageUrl = product.image_url && product.image_url !== 'none' ? product.image_url : null
+  const rating = product.rating || 4.7
+  const reviews = product.reviews || 48
+  const freeShipping = product.free_shipping || product.price >= 199900
 
   return (
     <Link
       href={`/${company?.store_slug}/p/${product.id}`}
-      className="product-card visible animate-scale-in"
-      style={{ textDecoration: 'none' }}
+      className="group bg-surface-900 border border-white/5 hover:border-brand-500/35 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col relative shadow-md hover:shadow-xl hover:-translate-y-1"
     >
-      <div className="product-card-img" style={{ background: 'var(--surface-700)', position: 'relative' }}>
+      {/* Imagen del Producto */}
+      <div className="aspect-square bg-surface-800 relative overflow-hidden shrink-0">
         {imageUrl ? (
-          <img src={imageUrl} alt={product.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img
+            src={imageUrl}
+            alt={product.name}
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
         ) : (
-          <div className="product-card-img-placeholder" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '2.5rem' }}>
-            {emoji}
+          <div className="w-full h-full flex items-center justify-center text-3xl opacity-35 bg-gradient-to-br from-surface-800 to-surface-700">
+            📦
           </div>
         )}
 
-        <div className="product-badges">
-          {product.featured && <span className="badge badge-warning" style={{ fontSize: '0.58rem' }}>⭐ Destacado</span>}
-          {hasDiscount && <span className="badge badge-danger" style={{ fontSize: '0.58rem' }}>-{product.discount_type === 'percentage' ? Math.round(product.discount_value) : Math.round((product.discount_value/product.price)*100)}%</span>}
+        {/* Badges Flotantes */}
+        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10">
+          {hasDiscount && discountPct > 0 && (
+            <span className="bg-danger-500 text-white font-extrabold text-[9px] uppercase px-2 py-0.5 rounded-md flex items-center gap-0.5">
+              <Percent size={9} />
+              -{discountPct}%
+            </span>
+          )}
+          {product.featured && (
+            <span className="bg-yellow-500 text-black font-extrabold text-[8px] uppercase px-2 py-0.5 rounded-md flex items-center gap-0.5">
+              ⭐ DESTACADO
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="product-card-body" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.2rem' }}>
-          <span className="product-card-category" style={{ fontSize: '0.62rem' }}>{product.category || 'Catálogo'}</span>
-          <span style={{ fontSize: '0.62rem', fontWeight: 700, color: accentColor, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '80px' }}>
-            {company?.name || 'Tienda'}
-          </span>
+      {/* Cuerpo del Producto */}
+      <div className="p-4 flex-1 flex flex-col justify-between">
+        <div>
+          
+          {/* Tienda origen y Categoría */}
+          <div className="flex items-center justify-between gap-2 mb-1 text-[9px] font-semibold text-gray-500">
+            <span className="uppercase tracking-wider">{product.category || 'Catálogo'}</span>
+            <span className="text-brand-400 font-extrabold truncate max-w-[70px]">
+              {company?.name || 'Tienda'}
+            </span>
+          </div>
+
+          <h4 className="text-xs font-bold text-gray-200 line-clamp-2 leading-snug group-hover:text-white transition-colors h-8">
+            {product.name}
+          </h4>
+
+          {/* Rating */}
+          <div className="flex items-center gap-1 mt-2 text-[9px] text-gray-400 font-bold">
+            <Star size={10} className="text-yellow-400 fill-yellow-400" />
+            <span>{rating}</span>
+            <span className="text-gray-600 font-medium">({reviews})</span>
+          </div>
         </div>
 
-        <h4 className="product-card-name" style={{ fontSize: '0.8rem', fontWeight: 700, minHeight: '36px' }}>{product.name}</h4>
+        {/* Precios & Envíos */}
+        <div className="mt-4 pt-3 border-t border-white/5">
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="text-sm font-black text-white">{fCOP(finalPrice)}</span>
+            {hasDiscount && (
+              <span className="text-[10px] text-gray-500 line-through font-semibold">
+                {fCOP(product.price)}
+              </span>
+            )}
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem', marginTop: 'auto' }}>
-          <span className="product-card-price" style={{ fontSize: '0.95rem' }}>{fCOP(finalPrice)}</span>
-          {hasDiscount && <span className="product-card-original-price" style={{ fontSize: '0.68rem' }}>{fCOP(product.price)}</span>}
+          {/* Shipping badge */}
+          <div className="min-h-[14px] mt-1.5">
+            {freeShipping && (
+              <span className="inline-flex items-center gap-1 text-[8px] font-black text-emerald-400 tracking-wider">
+                <Truck size={10} />
+                ENVÍO GRATIS
+              </span>
+            )}
+          </div>
         </div>
+
       </div>
     </Link>
   )

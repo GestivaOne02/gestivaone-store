@@ -1,85 +1,77 @@
 'use client'
+import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 
-import Image from 'next/image'
-import { ShoppingBag, Star, MapPin, Phone, Globe } from 'lucide-react'
+// Trust/shipping icons
+const ShieldCheck = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
+  </svg>
+)
+const Truck = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+    <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+  </svg>
+)
+const Star = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+  </svg>
+)
 
 export default function StoreHeader({ company }) {
-  const { name, logo_url, store_settings, country } = company
+  const [scrolled, setScrolled] = useState(false)
+  const accentColor = company?.store_settings?.accent_color || '#4f46e5'
 
-  const accentColor = store_settings?.accent_color || '#4f46e5'
-  const whatsapp    = store_settings?.whatsapp_contact || ''
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const firstLetter = (company?.name || 'G').charAt(0).toUpperCase()
 
   return (
     <header
-      className="w-full sticky top-0 z-50 glass border-b"
-      style={{ borderBottomColor: 'rgba(255,255,255,0.06)' }}
+      className="store-header"
+      style={{
+        background: scrolled
+          ? 'rgba(10,10,15,0.95)'
+          : 'rgba(10,10,15,0.75)',
+        boxShadow: scrolled ? '0 1px 0 rgba(255,255,255,0.05), 0 4px 20px rgba(0,0,0,0.3)' : 'none',
+      }}
     >
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <div className="container-store">
+        <div className="store-header-inner">
 
-        {/* Logo + Name */}
-        <div className="flex items-center gap-3 min-w-0">
-          {logo_url ? (
-            <div className="relative w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 ring-2 ring-white/10">
-              <Image
-                src={logo_url}
-                alt={`Logo de ${name}`}
-                fill
-                className="object-cover"
-              />
-            </div>
-          ) : (
+          {/* Logo + Name */}
+          <Link href={`/${company?.store_slug}`} className="store-logo-wrap" style={{ gap: '0.75rem' }}>
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-black text-xl"
-              style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}99)` }}
+              className="store-logo-icon"
+              style={{ background: `linear-gradient(135deg, ${accentColor}, #7c3aed)` }}
             >
-              {name?.[0]?.toUpperCase()}
-            </div>
-          )}
-
-          <div className="min-w-0">
-            <h1 className="font-bold text-white text-base leading-tight truncate">
-              {name}
-            </h1>
-            {country && (
-              <span className="text-xs text-gray-400 flex items-center gap-1">
-                <MapPin className="w-3 h-3" />
-                {country}
+              <span style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 900, position: 'relative', zIndex: 1 }}>
+                {firstLetter}
               </span>
-            )}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div className="store-name">{company?.name || 'Tienda'}</div>
+              <div style={{ fontSize: '0.62rem', color: 'var(--muted-400)', fontWeight: 600 }}>Tienda Oficial</div>
+            </div>
+          </Link>
+
+          {/* Trust Badges */}
+          <div className="trust-bar" style={{ gap: '0.4rem' }}>
+            <div className="trust-pill hide-mobile">
+              <ShieldCheck /> Compra Segura
+            </div>
+            <div className="trust-pill">
+              <Truck /> Paga al recibir
+            </div>
           </div>
+
         </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {whatsapp && (
-            <a
-              href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-              style={{ background: '#25d366' }}
-            >
-              <Phone className="w-4 h-4" />
-              WhatsApp
-            </a>
-          )}
-
-          <div
-            className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-white/70"
-            style={{ background: 'rgba(255,255,255,0.06)' }}
-          >
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span>Tienda</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Trust bar */}
-      <div
-        className="py-1.5 text-center text-xs font-medium tracking-wide"
-        style={{ background: accentColor, color: '#fff' }}
-      >
-        🔒 Compra segura · 🚚 Envío a todo el país · ⭐ Garantía de satisfacción
       </div>
     </header>
   )

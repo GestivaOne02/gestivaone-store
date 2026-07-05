@@ -1,114 +1,110 @@
 'use client'
-
-import Image from 'next/image'
 import Link from 'next/link'
-import { ShoppingCart, Tag } from 'lucide-react'
+import { useRef, useEffect, useState } from 'react'
 
-function formatPrice(price, currency = 'COP') {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price)
+// Utility: format price in Colombian pesos
+const formatCOP = (v) =>
+  v == null ? '' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(v)
+
+// Category emoji map (matching gestivaone admin)
+const CATEGORY_EMOJI = {
+  'Alimentos': '🍎', 'Bebidas': '🥤', 'Limpieza': '🧹', 'Higiene': '🧴',
+  'Tecnología': '💻', 'Ropa': '👗', 'Calzado': '👟', 'Hogar': '🏠',
+  'Mascotas': '🐾', 'Juguetes': '🧸', 'Salud': '💊', 'Belleza': '💄',
+  'Deportes': '⚽', 'Papelería': '📝', 'Otros': '📦',
 }
 
-function getDiscountedPrice(product) {
-  const { price, discount_type, discount_value, discount_ends_at } = product
-  if (!discount_type || !discount_value) return null
-  if (discount_ends_at && new Date(discount_ends_at) < new Date()) return null
-  if (discount_type === 'percentage') return price - (price * discount_value) / 100
-  if (discount_type === 'fixed') return price - discount_value
-  return null
-}
+// Badge components
+const DiscountBadge = ({ pct }) => (
+  <span className="badge badge-danger" style={{ fontSize: '0.6rem', padding: '0.15rem 0.45rem' }}>
+    -{pct}%
+  </span>
+)
+const FeaturedBadge = () => (
+  <span className="badge badge-warning" style={{ fontSize: '0.6rem', padding: '0.15rem 0.45rem' }}>
+    ⭐ Destacado
+  </span>
+)
 
-function getDiscountLabel(product) {
-  const { discount_type, discount_value } = product
-  if (discount_type === 'percentage') return `-${discount_value}%`
-  if (discount_type === 'fixed') return `-${formatPrice(discount_value, 'COP')}`
-  return null
-}
+export default function ProductCard({ product, storeSlug, accentColor }) {
+  const ref = useRef(null)
+  const [visible, setVisible] = useState(false)
+  const color = accentColor || '#4f46e5'
 
-export default function ProductCard({ product, storeSlug, accentColor = '#4f46e5' }) {
-  const discountedPrice = getDiscountedPrice(product)
-  const discountLabel   = getDiscountLabel(product)
-  const finalPrice      = discountedPrice ?? product.price
-  const hasStock        = product.unit === 'UND' ? product.stock > 0 : true
+  // Intersection observer for staggered entrance animation
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect() } },
+      { threshold: 0.1 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  const hasDiscount = product.discount_value && product.discount_value > 0
+  const discountPct = hasDiscount
+    ? product.discount_type === 'percentage'
+      ? Math.round(product.discount_value)
+      : Math.round((product.discount_value / product.price) * 100)
+    : 0
+  const finalPrice = hasDiscount
+    ? product.discount_type === 'percentage'
+      ? product.price * (1 - product.discount_value / 100)
+      : product.price - product.discount_value
+    : product.price
+
+  const emoji = CATEGORY_EMOJI[product.category] || '📦'
+  const imageUrl = product.image_url && product.image_url !== 'none' ? product.image_url : null
 
   return (
     <Link
       href={`/${storeSlug}/p/${product.id}`}
-      className="group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer"
-      style={{ background: 'var(--surface-700)' }}
+      ref={ref}
+      className={`product-card${visible ? ' visible' : ''}`}
+      style={{ textDecoration: 'none', '--accent': color }}
     >
       {/* Image */}
-      <div className="relative aspect-square overflow-hidden bg-[var(--surface-600)]">
-        {product.image_url ? (
-          <Image
-            src={product.image_url}
-            alt={product.name}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          />
+      <div className="product-card-img">
+        {imageUrl ? (
+          <img src={imageUrl} alt={product.name} loading="lazy" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-4xl text-gray-600">
-            🛍️
-          </div>
+          <div className="product-card-img-placeholder">{emoji}</div>
         )}
 
         {/* Badges */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {discountLabel && (
-            <span className="px-2 py-0.5 rounded-lg text-xs font-black text-white"
-              style={{ background: '#ef4444' }}>
-              {discountLabel}
-            </span>
-          )}
-          {product.featured && (
-            <span className="px-2 py-0.5 rounded-lg text-xs font-bold text-white"
-              style={{ background: accentColor }}>
-              ⭐ Destacado
-            </span>
-          )}
-          {!hasStock && (
-            <span className="px-2 py-0.5 rounded-lg text-xs font-bold text-white bg-gray-600">
-              Agotado
-            </span>
-          )}
+        <div className="product-badges">
+          {product.featured && <FeaturedBadge />}
+          {hasDiscount && discountPct > 0 && <DiscountBadge pct={discountPct} />}
         </div>
       </div>
 
-      {/* Info */}
-      <div className="flex flex-col gap-1 p-3 flex-1">
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider truncate">
-          {product.category}
-        </p>
-        <h3 className="text-sm font-semibold text-white leading-snug line-clamp-2">
-          {product.name}
-        </h3>
+      {/* Body */}
+      <div className="product-card-body">
+        <div className="product-card-category">{product.category || 'Producto'}</div>
+        <div className="product-card-name">{product.name}</div>
 
-        {/* Price */}
-        <div className="mt-auto pt-2 flex items-end gap-2 flex-wrap">
-          <span className="text-base font-black" style={{ color: accentColor }}>
-            {formatPrice(finalPrice)}
-          </span>
-          {discountedPrice && (
-            <span className="text-sm text-gray-500 line-through">
-              {formatPrice(product.price)}
-            </span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <div className="product-card-price">{formatCOP(finalPrice)}</div>
+          {hasDiscount && (
+            <div className="product-card-original-price">{formatCOP(product.price)}</div>
           )}
         </div>
-      </div>
 
-      {/* Hover CTA */}
-      <div
-        className="absolute bottom-0 left-0 right-0 py-2 text-center text-xs font-bold text-white
-                   translate-y-full group-hover:translate-y-0 transition-transform duration-300"
-        style={{ background: accentColor }}
-      >
-        <ShoppingCart className="inline w-3.5 h-3.5 mr-1" />
-        Ver producto
+        <div className="product-card-cta">
+          <button
+            className="btn-add-cart"
+            style={{ background: `linear-gradient(135deg, ${color}, #7c3aed)` }}
+            onClick={(e) => e.preventDefault()}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            Ver producto
+          </button>
+        </div>
       </div>
     </Link>
   )

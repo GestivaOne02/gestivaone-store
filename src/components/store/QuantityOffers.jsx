@@ -1,120 +1,105 @@
 'use client'
 
-import { useState } from 'react'
-import { Check } from 'lucide-react'
+const formatCOP = (v) =>
+  v == null ? '' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(v)
 
-function formatPrice(price) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  }).format(price)
-}
+const OFFERS = [
+  { qty: 1,  discount: 0,  label: '1 unidad',   highlight: false },
+  { qty: 2,  discount: 10, label: '2 unidades',  highlight: false },
+  { qty: 3,  discount: 20, label: '3 unidades',  highlight: true, tag: 'Más popular' },
+]
 
-/**
- * QuantityOffers
- * Displays multi-buy offer cards: 1 unit, 2x1, 3x2, etc.
- * Inspired by high-conversion LATAM product pages.
- *
- * @param {number}   basePrice      - Unit price
- * @param {number}   selected       - Currently selected quantity
- * @param {function} onSelect       - Callback(qty, finalPrice)
- * @param {string}   accentColor    - Brand color
- * @param {number}   discountedPrice - Pre-discounted unit price (optional)
- */
-export default function QuantityOffers({
-  basePrice,
-  discountedPrice,
-  selected,
-  onSelect,
-  accentColor = '#4f46e5',
-}) {
-  const unitPrice = discountedPrice ?? basePrice
+const CheckCircle = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+  </svg>
+)
 
-  const offers = [
-    {
-      qty: 1,
-      label: '1 Unidad',
-      tag: null,
-      pct: 0,
-      totalPrice: unitPrice,
-    },
-    {
-      qty: 2,
-      label: '2 Unidades',
-      tag: '¡MÁS VENDIDO!',
-      pct: 10,
-      totalPrice: unitPrice * 2 * 0.9,
-    },
-    {
-      qty: 3,
-      label: '3 Unidades',
-      tag: 'MEJOR PRECIO',
-      pct: 20,
-      totalPrice: unitPrice * 3 * 0.8,
-    },
-  ]
+export default function QuantityOffers({ basePrice, selectedOffer, onSelect, accentColor }) {
+  const color = accentColor || '#4f46e5'
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-        Elige tu oferta
-      </p>
-      {offers.map((offer) => {
-        const isSelected = selected === offer.qty
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <div style={{
+        fontSize: '0.72rem', fontWeight: 700, color: 'var(--muted-500)',
+        textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem'
+      }}>
+        Ofertas por cantidad
+      </div>
+
+      {OFFERS.map((offer) => {
+        const unitPrice = basePrice * (1 - offer.discount / 100)
+        const total = unitPrice * offer.qty
+        const isSelected = selectedOffer.qty === offer.qty
+        const savings = offer.discount > 0 ? basePrice * (offer.discount / 100) * offer.qty : 0
+
         return (
           <button
             key={offer.qty}
-            type="button"
-            onClick={() => onSelect(offer.qty, offer.totalPrice)}
-            className="relative flex items-center justify-between gap-3 p-4 rounded-2xl border-2 text-left w-full transition-all duration-200"
+            onClick={() => onSelect({ qty: offer.qty, discount: offer.discount })}
+            className={`quantity-offer-card${isSelected ? ' selected' : ''}`}
             style={{
-              borderColor: isSelected ? accentColor : 'rgba(255,255,255,0.08)',
-              background: isSelected ? `${accentColor}18` : 'var(--surface-700)',
+              width: '100%', cursor: 'pointer', textAlign: 'left', position: 'relative',
+              ...(isSelected ? {
+                borderColor: color,
+                background: `${color}12`,
+                boxShadow: `0 0 0 1px ${color}33, 0 4px 12px ${color}22`,
+              } : {}),
             }}
           >
-            {/* Tag badge */}
-            {offer.tag && (
-              <span
-                className="absolute -top-2.5 left-4 px-2 py-0.5 rounded-full text-xs font-black text-white"
-                style={{ background: offer.pct >= 20 ? '#10b981' : accentColor }}
-              >
-                {offer.tag}
+            {/* Popular tag */}
+            {offer.highlight && (
+              <span className="badge badge-success" style={{
+                position: 'absolute', top: '-8px', right: '10px',
+                fontSize: '0.58rem', padding: '0.15rem 0.5rem'
+              }}>
+                ⭐ {offer.tag}
               </span>
             )}
 
-            {/* Selector circle */}
-            <span
-              className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-              style={{
-                borderColor: isSelected ? accentColor : 'rgba(255,255,255,0.3)',
-                background:  isSelected ? accentColor : 'transparent',
-              }}
-            >
-              {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+              {/* Left */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
+                {/* Check circle */}
+                <div style={{
+                  width: '1.4rem', height: '1.4rem', borderRadius: '50%', flexShrink: 0,
+                  background: isSelected ? color : 'var(--surface-700)',
+                  border: `2px solid ${isSelected ? color : 'var(--border-subtle)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.2s',
+                }}>
+                  {isSelected && <CheckCircle />}
+                </div>
 
-            {/* Label + per-unit info */}
-            <span className="flex-1 min-w-0">
-              <span className="block text-sm font-semibold text-white">{offer.label}</span>
-              {offer.pct > 0 && (
-                <span className="text-xs" style={{ color: '#10b981' }}>
-                  Ahorras {offer.pct}% — {formatPrice(unitPrice * offer.qty - offer.totalPrice)} de descuento
-                </span>
-              )}
-            </span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.825rem', color: 'var(--text-foreground)', lineHeight: 1.2 }}>
+                    {offer.label}
+                    {offer.discount > 0 && (
+                      <span className="badge badge-danger" style={{ marginLeft: '0.4rem', fontSize: '0.58rem', verticalAlign: 'middle' }}>
+                        -{offer.discount}%
+                      </span>
+                    )}
+                  </div>
+                  {savings > 0 && (
+                    <div style={{ fontSize: '0.67rem', color: 'var(--success-400)', fontWeight: 600, marginTop: '0.1rem' }}>
+                      Ahorras {formatCOP(savings)}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-            {/* Total price */}
-            <span className="flex flex-col items-end flex-shrink-0">
-              <span className="text-base font-black" style={{ color: isSelected ? accentColor : '#fff' }}>
-                {formatPrice(offer.totalPrice)}
-              </span>
-              {offer.qty > 1 && (
-                <span className="text-xs text-gray-500 line-through">
-                  {formatPrice(unitPrice * offer.qty)}
-                </span>
-              )}
-            </span>
+              {/* Right — price */}
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontWeight: 900, fontSize: '0.95rem', color: 'var(--text-foreground)', letterSpacing: '-0.02em' }}>
+                  {formatCOP(total)}
+                </div>
+                {offer.qty > 1 && (
+                  <div style={{ fontSize: '0.62rem', color: 'var(--muted-400)', fontWeight: 500 }}>
+                    {formatCOP(unitPrice)} c/u
+                  </div>
+                )}
+              </div>
+            </div>
           </button>
         )
       })}

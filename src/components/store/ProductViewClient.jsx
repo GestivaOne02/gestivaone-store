@@ -1,184 +1,236 @@
 'use client'
-
 import { useState } from 'react'
-import Image from 'next/image'
-import QuantityOffers from './QuantityOffers'
 import CodForm from './CodForm'
-import { Phone, Check, ShieldCheck, HelpCircle } from 'lucide-react'
+import QuantityOffers from './QuantityOffers'
 
-function formatPrice(price) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  }).format(price)
+const formatCOP = (v) =>
+  v == null ? '' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(v)
+
+const CATEGORY_EMOJI = {
+  'Alimentos': '🍎', 'Bebidas': '🥤', 'Limpieza': '🧹', 'Higiene': '🧴',
+  'Tecnología': '💻', 'Ropa': '👗', 'Calzado': '👟', 'Hogar': '🏠',
+  'Mascotas': '🐾', 'Juguetes': '🧸', 'Salud': '💊', 'Belleza': '💄',
+  'Deportes': '⚽', 'Papelería': '📝', 'Otros': '📦',
 }
 
+// Icons
+const ShoppingCart = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+  </svg>
+)
+const ChevronDown = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9"/>
+  </svg>
+)
+const Star = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+  </svg>
+)
+
 export default function ProductViewClient({ product, company, storeSlug }) {
-  const accentColor = company.store_settings?.accent_color || '#4f46e5'
-  const whatsapp = company.store_settings?.whatsapp_contact || ''
+  const [selectedOffer, setSelectedOffer] = useState({ qty: 1, discount: 0 })
+  const [showForm, setShowForm] = useState(false)
+  const accentColor = company?.store_settings?.accent_color || '#4f46e5'
 
-  // Offers state
-  const [selectedQty, setSelectedQty] = useState(1)
-  const [totalPrice, setTotalPrice] = useState(product.price)
+  const hasDiscount = product.discount_value && product.discount_value > 0
+  const baseDiscount = hasDiscount
+    ? product.discount_type === 'percentage'
+      ? product.discount_value
+      : (product.discount_value / product.price) * 100
+    : 0
+  const basePrice = hasDiscount
+    ? product.discount_type === 'percentage'
+      ? product.price * (1 - product.discount_value / 100)
+      : product.price - product.discount_value
+    : product.price
 
-  const handleSelectOffer = (qty, price) => {
-    setSelectedQty(qty)
-    setTotalPrice(price)
-  }
+  const finalUnitPrice = basePrice * (1 - selectedOffer.discount / 100)
+  const finalTotal = finalUnitPrice * selectedOffer.qty
 
-  // Scroll to checkout form
-  const scrollToCheckout = () => {
-    const formElement = document.getElementById('checkout-form-container')
-    if (formElement) {
-      formElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
+  const imageUrl = product.image_url && product.image_url !== 'none' ? product.image_url : null
+  const emoji = CATEGORY_EMOJI[product.category] || '📦'
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
-      
-      {/* Column 1: Image & Description (lg:col-span-7) */}
-      <div className="lg:col-span-7 flex flex-col gap-6">
-        
-        {/* Product Main Card */}
-        <div className="p-4 rounded-2xl border border-subtle bg-surface-800">
-          <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-surface-700">
-            {product.image_url ? (
-              <Image
-                src={product.image_url}
-                alt={product.name}
-                fill
-                priority
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 50vw"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-6xl">
-                📦
-              </div>
+    <>
+      {/* Product layout grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr',
+        gap: '2rem',
+      }}
+        className="animate-slide-up"
+      >
+        {/* Image */}
+        <div className="product-detail-img-wrap">
+          {imageUrl ? (
+            <img src={imageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <div style={{
+              width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '5rem', background: 'linear-gradient(135deg, var(--surface-700), var(--surface-600))'
+            }}>
+              {emoji}
+            </div>
+          )}
+
+          {/* Badges overlay */}
+          <div style={{ position: 'absolute', top: '1rem', left: '1rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            {product.featured && (
+              <span className="badge badge-warning">
+                <Star /> Destacado
+              </span>
+            )}
+            {hasDiscount && (
+              <span className="badge badge-danger">
+                -{Math.round(baseDiscount)}% OFF
+              </span>
             )}
           </div>
         </div>
 
-        {/* Product Description */}
-        <div className="p-6 rounded-2xl border border-subtle bg-surface-800">
-          <h3 className="text-base font-bold text-white uppercase tracking-wider mb-3">
-            Descripción del Producto
-          </h3>
-          <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
-            {product.description || 'Este producto no cuenta con descripción detallada en este momento. Si tienes dudas, contáctanos directamente a nuestro WhatsApp.'}
+        {/* Details */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Category */}
+          <div className="badge badge-brand" style={{ alignSelf: 'flex-start' }}>
+            {product.category || 'Producto'}
           </div>
-        </div>
 
-        {/* Trust Badges */}
-        <div className="grid grid-cols-3 gap-4 p-4 rounded-2xl border border-subtle bg-surface-800 text-center">
-          <div className="flex flex-col items-center gap-1.5">
-            <TruckIcon className="w-7 h-7" style={{ color: accentColor }} />
-            <span className="text-xs font-bold text-white leading-tight">Envío Gratis</span>
-            <span className="text-[10px] text-gray-400">A todo el país</span>
-          </div>
-          <div className="flex flex-col items-center gap-1.5">
-            <ShieldCheck className="w-7 h-7 text-emerald-400" />
-            <span className="text-xs font-bold text-white leading-tight">Compra Segura</span>
-            <span className="text-[10px] text-gray-400">Paga al recibir</span>
-          </div>
-          <div className="flex flex-col items-center gap-1.5">
-            <HelpCircle className="w-7 h-7 text-amber-400" />
-            <span className="text-xs font-bold text-white leading-tight">Soporte 24/7</span>
-            <span className="text-[10px] text-gray-400">Atención WhatsApp</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Column 2: Buy Interface & Forms (lg:col-span-5) */}
-      <div className="lg:col-span-5 flex flex-col gap-6">
-        
-        {/* Name and Pricing Header */}
-        <div className="p-6 rounded-2xl border border-subtle bg-surface-800 flex flex-col gap-3">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-            {product.category || 'Categoría'}
-          </span>
-          <h2 className="text-2xl font-black text-white leading-tight">
+          {/* Name */}
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
             {product.name}
-          </h2>
+          </h1>
 
-          <div className="flex items-end gap-3 mt-1">
-            <span className="text-3xl font-black" style={{ color: accentColor }}>
-              {formatPrice(product.price)}
+          {/* Price */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <span className="product-detail-price" style={{ color: accentColor === '#4f46e5' ? '#a5b4fc' : accentColor }}>
+              {formatCOP(basePrice)}
             </span>
-            <span className="px-2 py-0.5 rounded-lg text-xs font-black text-white bg-emerald-500 uppercase tracking-wider">
-              Envío gratis
-            </span>
+            {hasDiscount && (
+              <span style={{ fontSize: '1rem', color: 'var(--muted-400)', textDecoration: 'line-through', fontWeight: 500 }}>
+                {formatCOP(product.price)}
+              </span>
+            )}
           </div>
-        </div>
 
-        {/* Dynamic Quantity Offer Cards */}
-        <div className="p-6 rounded-2xl border border-subtle bg-surface-800">
+          {/* Description */}
+          {product.description && (
+            <div style={{
+              background: 'var(--surface-800)', border: '1px solid var(--border-subtle)',
+              borderRadius: '0.85rem', padding: '1rem 1.1rem'
+            }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--muted-500)', lineHeight: 1.7 }}>
+                {product.description}
+              </p>
+            </div>
+          )}
+
+          {/* Quantity Offers */}
           <QuantityOffers
-            basePrice={product.price}
-            selected={selectedQty}
-            onSelect={handleSelectOffer}
+            basePrice={basePrice}
+            selectedOffer={selectedOffer}
+            onSelect={setSelectedOffer}
             accentColor={accentColor}
           />
-        </div>
 
-        {/* Checkout Form */}
-        <div id="checkout-form-container">
-          <CodForm
-            product={product}
-            quantity={selectedQty}
-            totalPrice={totalPrice}
-            storeSlug={storeSlug}
-            companyId={company.id}
-            accentColor={accentColor}
-          />
+          {/* Total display */}
+          <div style={{
+            background: 'var(--surface-800)', border: '1px solid var(--border-subtle)',
+            borderRadius: '0.85rem', padding: '1rem 1.25rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--muted-400)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Total a pagar
+              </div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-foreground)', letterSpacing: '-0.02em' }}>
+                {formatCOP(finalTotal)}
+              </div>
+            </div>
+            {selectedOffer.qty > 1 && (
+              <div className="badge badge-success">
+                {selectedOffer.qty} uds × {formatCOP(finalUnitPrice)} c/u
+              </div>
+            )}
+          </div>
+
+          {/* CTA Button — only on desktop */}
+          <button
+            className="btn btn-primary hide-mobile"
+            style={{
+              background: `linear-gradient(135deg, ${accentColor}, #7c3aed)`,
+              boxShadow: `0 6px 20px ${accentColor}55`,
+              width: '100%',
+              minHeight: '52px',
+              fontSize: '1rem',
+            }}
+            onClick={() => setShowForm(true)}
+          >
+            <ShoppingCart />
+            Pedir ahora — Pago contra entrega
+          </button>
+
+          {/* COD Form (inline on desktop) */}
+          {showForm && (
+            <div className="animate-slide-up">
+              <CodForm
+                product={product}
+                company={company}
+                selectedOffer={selectedOffer}
+                finalTotal={finalTotal}
+                accentColor={accentColor}
+              />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Sticky Bottom Bar for Mobile Viewport */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 p-4 border-t border-subtle bg-surface-900/95 backdrop-blur-md flex items-center justify-between gap-4">
-        <div>
-          <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-            Total a Pagar ({selectedQty} {selectedQty === 1 ? 'ud' : 'uds'}):
-          </span>
-          <span className="text-lg font-black text-white">
-            {formatPrice(totalPrice)}
+      {/* Sticky bottom CTA — mobile only */}
+      <div className="sticky-cta" style={{ display: showForm ? 'none' : undefined }}>
+        <div className="sticky-cta-price">
+          <span style={{ fontSize: '0.65rem', color: 'var(--muted-400)', fontWeight: 600, textTransform: 'uppercase' }}>Total</span>
+          <span style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--text-foreground)' }}>
+            {formatCOP(finalTotal)}
           </span>
         </div>
         <button
-          type="button"
-          onClick={scrollToCheckout}
-          className="px-6 py-3.5 rounded-xl font-bold text-white text-xs uppercase tracking-widest shadow-lg flex-1 text-center"
+          className="btn btn-primary"
           style={{
-            background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)`,
-            boxShadow: `0 4px 14px ${accentColor}30`,
+            flex: 1,
+            background: `linear-gradient(135deg, ${accentColor}, #7c3aed)`,
+            boxShadow: `0 6px 20px ${accentColor}55`,
+            minHeight: '48px'
+          }}
+          onClick={() => {
+            setShowForm(true)
+            setTimeout(() => {
+              document.getElementById('cod-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }, 100)
           }}
         >
-          Pedir Ahora
+          <ShoppingCart />
+          Pedir ahora
         </button>
       </div>
 
-    </div>
-  )
-}
-
-function TruckIcon(props) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <rect x="1" y="3" width="15" height="13" rx="2" ry="2" />
-      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-      <circle cx="5.5" cy="18.5" r="2.5" />
-      <circle cx="18.5" cy="18.5" r="2.5" />
-    </svg>
+      {/* Anchor for form scroll */}
+      <div id="cod-form-anchor" style={{ marginTop: '2rem' }}>
+        {showForm && (
+          <div className="animate-slide-up">
+            <CodForm
+              product={product}
+              company={company}
+              selectedOffer={selectedOffer}
+              finalTotal={finalTotal}
+              accentColor={accentColor}
+              mobile
+            />
+          </div>
+        )}
+      </div>
+    </>
   )
 }

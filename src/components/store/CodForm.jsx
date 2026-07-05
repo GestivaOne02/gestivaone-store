@@ -4,38 +4,62 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { COLOMBIA } from '@/lib/colombia'
-import { Truck, CheckCircle, AlertTriangle } from 'lucide-react'
+
+const formatCOP = (v) =>
+  v == null ? '' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(v)
+
+// Inline Icons (no external deps)
+const TruckIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+    <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+  </svg>
+)
+const CheckIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+  </svg>
+)
+const AlertIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+)
+const SpinnerIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83">
+      <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"/>
+    </path>
+  </svg>
+)
 
 export default function CodForm({
   product,
-  quantity,
-  totalPrice,
-  storeSlug,
-  companyId,
+  company,
+  selectedOffer,
+  finalTotal,
   accentColor = '#4f46e5',
+  mobile = false,
 }) {
   const router = useRouter()
 
-  // Form states
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [documentId, setDocumentId] = useState('') // Cédula/NIT
-  const [department, setDepartment] = useState('')
-  const [city, setCity] = useState('')
-  const [address, setAddress] = useState('')
-  const [notes, setNotes] = useState('')
+  const [firstName, setFirstName]   = useState('')
+  const [lastName,  setLastName]    = useState('')
+  const [phone,     setPhone]       = useState('')
+  const [documentId,setDocumentId]  = useState('')
+  const [department,setDepartment]  = useState('')
+  const [city,      setCity]        = useState('')
+  const [address,   setAddress]     = useState('')
+  const [notes,     setNotes]       = useState('')
+  const [citiesList,setCitiesList]  = useState([])
+  const [loading,   setLoading]     = useState(false)
+  const [errorMsg,  setErrorMsg]    = useState('')
 
-  // UI States
-  const [citiesList, setCitiesList] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [errorMsg, setErrorMsg] = useState('')
-
-  // Load cities list when department changes
   useEffect(() => {
     if (department) {
-      const selectedDept = COLOMBIA.find((d) => d.name === department)
-      setCitiesList(selectedDept ? selectedDept.cities : [])
+      const d = COLOMBIA.find((dep) => dep.name === department)
+      setCitiesList(d ? d.cities : [])
       setCity('')
     } else {
       setCitiesList([])
@@ -48,282 +72,213 @@ export default function CodForm({
     setErrorMsg('')
 
     if (!firstName || !lastName || !phone || !department || !city || !address) {
-      setErrorMsg('Por favor completa todos los campos requeridos.')
+      setErrorMsg('Por favor completa todos los campos obligatorios.')
       return
     }
 
     setLoading(true)
+    const companyId = company.id
+    const storeSlug = company.store_slug
 
     try {
-      // 1. Create or Find Client in Supabase
-      // Check if client exists with same phone or email
-      let clientId = null
       const clientName = `${firstName} ${lastName}`
 
-      const { data: existingClient, error: clientFetchError } = await supabase
+      // Check or create client
+      let clientId = null
+      const { data: existing } = await supabase
         .from('clients')
         .select('id')
         .eq('company_id', companyId)
         .eq('phone', phone)
         .limit(1)
 
-      if (existingClient && existingClient.length > 0) {
-        clientId = existingClient[0].id
+      if (existing && existing.length > 0) {
+        clientId = existing[0].id
       } else {
-        // Insert new client
-        const { data: newClient, error: clientInsertError } = await supabase
+        const { data: newClient } = await supabase
           .from('clients')
-          .insert([
-            {
-              company_id: companyId,
-              name: clientName,
-              phone: phone,
-              address: `${address}, ${city}, ${department}`,
-              document_id: documentId || 'CONSUMIDOR_FINAL',
-              document_type: documentId ? '13' : '13', // Cédula de ciudadanía
-              type: 'persona_natural',
-            },
-          ])
-          .select('id')
-
-        if (!clientInsertError && newClient && newClient.length > 0) {
-          clientId = newClient[0].id
-        }
-      }
-
-      // 2. Insert Invoice
-      const invoiceId = `WEB-${Math.random().toString(36).substring(2, 9).toUpperCase()}`
-      
-      // Calculate individual price for invoice items
-      const unitPrice = totalPrice / quantity
-
-      const invoiceItem = {
-        productId: product.id,
-        name: product.name,
-        qty: quantity,
-        price: unitPrice,
-        tax: 0, // Simplified tax calculation for online storefront
-      }
-
-      const deliveryDetails = {
-        firstName,
-        lastName,
-        phone,
-        department,
-        city,
-        address,
-        notes,
-      }
-
-      const { error: invoiceInsertError } = await supabase
-        .from('invoices')
-        .insert([
-          {
-            id: invoiceId,
+          .insert([{
             company_id: companyId,
-            client_id: clientId,
-            client_name: clientName,
-            subtotal: totalPrice,
-            tax: 0,
-            total: totalPrice,
-            payment_type: 'contra_entrega', // Cash on delivery
-            payment_status: 'pending',
-            items: [invoiceItem],
-            source: 'store',
-            delivery_details: deliveryDetails,
-            note: notes || 'Pedido recibido a través de la tienda virtual.',
-            deuda_pendiente: totalPrice,
-            monto_pagado: 0,
-          },
-        ])
-
-      if (invoiceInsertError) {
-        throw new Error(invoiceInsertError.message)
+            name: clientName,
+            phone,
+            address: `${address}, ${city}, ${department}`,
+            document_id: documentId || 'CONSUMIDOR_FINAL',
+            document_type: '13',
+            type: 'persona_natural',
+          }])
+          .select('id')
+        if (newClient?.length > 0) clientId = newClient[0].id
       }
 
-      // Redirect to thank you page
-      router.push(`/${storeSlug}/gracias?invoiceId=${invoiceId}&total=${totalPrice}`)
+      const invoiceId = `WEB-${Math.random().toString(36).substring(2, 9).toUpperCase()}`
+      const unitPrice = finalTotal / (selectedOffer.qty || 1)
+
+      const { error: invoiceErr } = await supabase
+        .from('invoices')
+        .insert([{
+          id: invoiceId,
+          company_id: companyId,
+          client_id: clientId,
+          client_name: clientName,
+          subtotal: finalTotal,
+          tax: 0,
+          total: finalTotal,
+          payment_type: 'contra_entrega',
+          payment_status: 'pending',
+          items: [{
+            productId: product.id,
+            name: product.name,
+            qty: selectedOffer.qty || 1,
+            price: unitPrice,
+            tax: 0,
+          }],
+          source: 'store',
+          delivery_details: { firstName, lastName, phone, department, city, address, notes },
+          note: notes || 'Pedido recibido a través de la tienda virtual.',
+          deuda_pendiente: finalTotal,
+          monto_pagado: 0,
+        }])
+
+      if (invoiceErr) throw new Error(invoiceErr.message)
+
+      router.push(`/${storeSlug}/gracias?invoiceId=${invoiceId}&total=${finalTotal}&name=${encodeURIComponent(firstName)}`)
     } catch (err) {
       console.error('Error procesando pedido:', err)
-      setErrorMsg('Hubo un problema procesando tu compra. Por favor intenta de nuevo.')
+      setErrorMsg('Hubo un problema procesando tu pedido. Inténtalo de nuevo.')
     } finally {
       setLoading(false)
     }
   }
 
+  const InputField = ({ label, required, children }) => (
+    <div className="form-group">
+      <label className="form-label">{label}{required && <span style={{ color: 'var(--danger-400)', marginLeft: '0.2rem' }}>*</span>}</label>
+      {children}
+    </div>
+  )
+
   return (
-    <form onSubmit={handleSubmit} className="p-6 rounded-2xl border border-subtle bg-surface-800">
-      <div className="flex items-center gap-2 mb-6">
-        <Truck className="w-6 h-6" style={{ color: accentColor }} />
-        <h3 className="text-lg font-bold text-white uppercase tracking-wider">
-          Completa tus datos de envío
-        </h3>
+    <div className="cod-form-wrap animate-slide-up">
+      {/* Header */}
+      <div className="cod-form-title">
+        <span style={{ color: accentColor }}><TruckIcon /></span>
+        Datos de envío
+        <span className="badge badge-success" style={{ marginLeft: 'auto', fontWeight: 700 }}>
+          💳 Pago al recibir
+        </span>
       </div>
 
+      {/* Order summary */}
+      <div style={{
+        background: 'var(--surface-700)', borderRadius: '0.75rem', padding: '0.85rem 1rem',
+        marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        border: '1px solid var(--border-subtle)'
+      }}>
+        <div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--muted-400)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Tu pedido</div>
+          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-foreground)', marginTop: '0.1rem' }}>
+            {product.name} × {selectedOffer.qty || 1}
+          </div>
+        </div>
+        <div style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-foreground)', letterSpacing: '-0.02em' }}>
+          {formatCOP(finalTotal)}
+        </div>
+      </div>
+
+      {/* Error */}
       {errorMsg && (
-        <div className="mb-4 p-3.5 rounded-xl border border-danger/20 bg-danger/10 text-danger text-sm flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          <span>{errorMsg}</span>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+          borderRadius: '0.75rem', padding: '0.75rem 1rem', marginBottom: '1rem',
+          fontSize: '0.825rem', color: '#f87171'
+        }}>
+          <AlertIcon /> {errorMsg}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Nombre */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
-            Nombre *
-          </label>
-          <input
-            type="text"
-            required
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            placeholder="Ej. Juan"
-            className="w-full px-4 py-3 rounded-xl border bg-surface-700 text-white outline-none focus:border-indigo-500 transition-colors"
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+
+        {/* Name row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <InputField label="Nombre" required>
+            <input className="input-store" type="text" placeholder="Ej: Juan" value={firstName} onChange={e => setFirstName(e.target.value)} required />
+          </InputField>
+          <InputField label="Apellido" required>
+            <input className="input-store" type="text" placeholder="Ej: Pérez" value={lastName} onChange={e => setLastName(e.target.value)} required />
+          </InputField>
+        </div>
+
+        {/* Contact row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <InputField label="Teléfono" required>
+            <input className="input-store" type="tel" placeholder="3123456789" value={phone} onChange={e => setPhone(e.target.value)} required />
+          </InputField>
+          <InputField label="Cédula / NIT">
+            <input className="input-store" type="text" placeholder="Opcional" value={documentId} onChange={e => setDocumentId(e.target.value)} />
+          </InputField>
+        </div>
+
+        {/* Location row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <InputField label="Departamento" required>
+            <select className="input-store" value={department} onChange={e => setDepartment(e.target.value)} required>
+              <option value="">Selecciona...</option>
+              {COLOMBIA.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
+            </select>
+          </InputField>
+          <InputField label="Ciudad / Municipio" required>
+            <select className="input-store" value={city} onChange={e => setCity(e.target.value)} required disabled={!department} style={{ opacity: !department ? 0.5 : 1 }}>
+              <option value="">Selecciona...</option>
+              {citiesList.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </InputField>
+        </div>
+
+        {/* Address */}
+        <InputField label="Dirección de entrega" required>
+          <input className="input-store" type="text" placeholder="Calle, Carrera, número, barrio..." value={address} onChange={e => setAddress(e.target.value)} required />
+        </InputField>
+
+        {/* Notes */}
+        <InputField label="Indicaciones adicionales (opcional)">
+          <textarea
+            className="input-store"
+            rows={2}
+            placeholder="Ej: Dejar con el portero, casa con reja azul..."
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            style={{ resize: 'none' }}
           />
-        </div>
+        </InputField>
 
-        {/* Apellido */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
-            Apellido *
-          </label>
-          <input
-            type="text"
-            required
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            placeholder="Ej. Pérez"
-            className="w-full px-4 py-3 rounded-xl border bg-surface-700 text-white outline-none focus:border-indigo-500 transition-colors"
-          />
-        </div>
-      </div>
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn btn-primary"
+          style={{
+            marginTop: '0.5rem',
+            width: '100%',
+            minHeight: '52px',
+            fontSize: '0.95rem',
+            background: loading ? 'var(--surface-600)' : `linear-gradient(135deg, ${accentColor}, #7c3aed)`,
+            boxShadow: loading ? 'none' : `0 8px 24px ${accentColor}44`,
+            opacity: loading ? 0.7 : 1,
+            cursor: loading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {loading ? (
+            <><SpinnerIcon /> Procesando pedido...</>
+          ) : (
+            <><CheckIcon /> Confirmar pedido • {formatCOP(finalTotal)}</>
+          )}
+        </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        {/* Teléfono */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
-            Teléfono de contacto *
-          </label>
-          <input
-            type="tel"
-            required
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Ej. 3123456789"
-            className="w-full px-4 py-3 rounded-xl border bg-surface-700 text-white outline-none focus:border-indigo-500 transition-colors"
-          />
-        </div>
-
-        {/* Documento de Identidad (Cédula) */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
-            Cédula o NIT (Opcional)
-          </label>
-          <input
-            type="text"
-            value={documentId}
-            onChange={(e) => setDocumentId(e.target.value)}
-            placeholder="Para facturación electrónica"
-            className="w-full px-4 py-3 rounded-xl border bg-surface-700 text-white outline-none focus:border-indigo-500 transition-colors"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        {/* Departamento */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
-            Departamento *
-          </label>
-          <select
-            required
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border bg-surface-700 text-white outline-none focus:border-indigo-500 transition-colors cursor-pointer"
-          >
-            <option value="">Selecciona departamento</option>
-            {COLOMBIA.map((d) => (
-              <option key={d.name} value={d.name}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Municipio / Ciudad */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
-            Ciudad / Municipio *
-          </label>
-          <select
-            required
-            value={city}
-            disabled={!department}
-            onChange={(e) => setCity(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border bg-surface-700 text-white outline-none focus:border-indigo-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <option value="">Selecciona municipio</option>
-            {citiesList.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Dirección */}
-      <div className="mt-4">
-        <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
-          Dirección Completa *
-        </label>
-        <input
-          type="text"
-          required
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Calle, Carrera, número de casa, apto, barrio"
-          className="w-full px-4 py-3 rounded-xl border bg-surface-700 text-white outline-none focus:border-indigo-500 transition-colors"
-        />
-      </div>
-
-      {/* Notas */}
-      <div className="mt-4">
-        <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
-          Notas de entrega o indicaciones adicionales
-        </label>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Ej: Dejar en recepción, casa de rejas verdes..."
-          rows="2"
-          className="w-full px-4 py-3 rounded-xl border bg-surface-700 text-white outline-none focus:border-indigo-500 transition-colors resize-none"
-        />
-      </div>
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full mt-6 py-4 rounded-xl text-center font-bold text-white tracking-wider uppercase transition-transform active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-lg"
-        style={{
-          background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
-          boxShadow: `0 8px 24px ${accentColor}30`,
-        }}
-      >
-        {loading ? (
-          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        ) : (
-          <>
-            <CheckCircle className="w-5 h-5" />
-            <span>Confirmar Pedido — Pago Contra Entrega</span>
-          </>
-        )}
-      </button>
-
-      <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400 font-medium">
-        <span>🔒 Tu información está encriptada y protegida.</span>
-      </div>
-    </form>
+        <p style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--muted-400)', marginTop: '0.25rem' }}>
+          🔒 Tu información está cifrada y protegida. Pagarás al recibir tu pedido.
+        </p>
+      </form>
+    </div>
   )
 }

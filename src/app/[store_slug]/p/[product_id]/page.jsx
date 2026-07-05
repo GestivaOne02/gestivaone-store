@@ -35,7 +35,8 @@ async function getProductAndStore(store_slug, product_id) {
 }
 
 export default async function ProductDetailPage({ params }) {
-  const { store_slug, product_id } = params
+  const resolvedParams = await params
+  const { store_slug, product_id } = resolvedParams
   const { company, product } = await getProductAndStore(store_slug, product_id)
 
   if (!company) {

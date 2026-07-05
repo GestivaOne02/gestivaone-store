@@ -33,7 +33,8 @@ async function getStoreData(store_slug) {
 }
 
 export default async function StoreFront({ params }) {
-  const { store_slug } = params
+  const resolvedParams = await params
+  const { store_slug } = resolvedParams
   const { company, products } = await getStoreData(store_slug)
 
   if (!company) {

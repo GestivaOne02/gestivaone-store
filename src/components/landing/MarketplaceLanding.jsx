@@ -196,6 +196,7 @@ export default function MarketplaceLanding({ data }) {
                 </button>
               </div>
               <FiltersPanel
+                variant="accordion"
                 categories={categories}
                 brands={brands}
                 maxPrice={maxPrice}

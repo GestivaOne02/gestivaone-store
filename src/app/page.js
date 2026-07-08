@@ -1,37 +1,21 @@
-import { supabase } from '@/lib/supabase'
-import MarketplaceHome from '@/components/store/MarketplaceHome'
+import { getMarketplaceData } from '@/lib/api/marketplace'
+import MarketplaceLanding from '@/components/landing/MarketplaceLanding'
 
 export const dynamic = 'force-dynamic'
 
-async function getMarketplaceData() {
-  // Fetch active stores
-  const { data: companies } = await supabase
-    .from('companies')
-    .select('*')
-    .eq('store_enabled', true)
-    .order('created_at', { ascending: false })
-    .limit(100)
-
-  // Fetch active products
-  const { data: products } = await supabase
-    .from('products')
-    .select('*')
-    .eq('show_in_store', true)
-    .order('created_at', { ascending: false })
-    .limit(200)
-
-  return {
-    companies: companies || [],
-    products: products || []
-  }
+export const metadata = {
+  title: {
+    absolute: 'Gestiva.store — Marketplace con pago contra entrega',
+  },
+  description:
+    'Compra tecnología, hogar, moda y más en las tiendas del marketplace Gestiva. Paga contra entrega en toda Colombia.',
 }
 
 export default async function Home() {
-  const { companies, products } = await getMarketplaceData()
-
+  const data = await getMarketplaceData()
   return (
-    <main className="w-full overflow-x-hidden bg-[#f8fafc]">
-      <MarketplaceHome initialCompanies={companies} initialProducts={products} />
+    <main className="w-full overflow-x-hidden">
+      <MarketplaceLanding data={data} />
     </main>
   )
 }

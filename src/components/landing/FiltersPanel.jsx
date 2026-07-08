@@ -13,12 +13,20 @@ const EMPTY_DRAFT = {
   onlyDeals: false,
   inStock: false,
   freeShipping: false,
+  sort: 'recent',
+  storeId: '',
 }
 
 const AVAILABILITY_OPTS = [
   { key: 'onlyDeals', label: 'Solo con descuento' },
   { key: 'freeShipping', label: 'Envío gratis' },
   { key: 'inStock', label: 'Disponible ahora' },
+]
+
+const SORT_OPTS = [
+  { key: 'recent', label: 'Más recientes' },
+  { key: 'price_asc', label: 'Menor precio' },
+  { key: 'price_desc', label: 'Mayor precio' },
 ]
 
 /* ── Contenido de cada sección (compartido por flyout y acordeón) ── */
@@ -145,6 +153,60 @@ function BrandPicker({ brands, draft, set }) {
   )
 }
 
+function SortPicker({ draft, set, onPick }) {
+  return (
+    <ul className="space-y-0.5">
+      {SORT_OPTS.map((o) => {
+        const active = (draft.sort || 'recent') === o.key
+        return (
+          <li key={o.key}>
+            <button
+              type="button"
+              onClick={() => {
+                set({ sort: o.key })
+                onPick?.()
+              }}
+              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${active ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
+            >
+              {o.label}
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+function StoreList({ stores, draft, set, onPick }) {
+  return (
+    <ul className="space-y-0.5 max-h-64 overflow-y-auto pr-1">
+      {stores.map((s) => {
+        const active = draft.storeId === s.id
+        return (
+          <li key={s.id}>
+            <button
+              type="button"
+              onClick={() => {
+                set({ storeId: active ? '' : s.id })
+                onPick?.()
+              }}
+              className={`w-full flex items-center justify-between text-left px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${active ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
+            >
+              <span className="truncate">{s.name}</span>
+              <span className={`text-[11px] shrink-0 ${active ? 'text-blue-400' : 'text-slate-300'}`}>
+                {s.productCount}
+              </span>
+            </button>
+          </li>
+        )
+      })}
+      {stores.length === 0 && (
+        <li className="text-[11px] text-slate-400 font-medium px-2.5">Sin tiendas disponibles</li>
+      )}
+    </ul>
+  )
+}
+
 function AvailabilityToggles({ draft, set }) {
   return (
     <div>
@@ -188,6 +250,7 @@ function Section({ title, children, defaultOpen = true }) {
 export default function FiltersPanel({
   categories = [],
   brands = [],
+  stores = [],
   maxPrice = 5000000,
   onApply,
   applied,
@@ -222,7 +285,9 @@ export default function FiltersPanel({
     draft.brands.length +
     (draft.onlyDeals ? 1 : 0) +
     (draft.inStock ? 1 : 0) +
-    (draft.freeShipping ? 1 : 0)
+    (draft.freeShipping ? 1 : 0) +
+    (draft.storeId ? 1 : 0) +
+    (draft.sort && draft.sort !== 'recent' ? 1 : 0)
 
   const clear = () => {
     setDraft(EMPTY_DRAFT)
@@ -258,11 +323,29 @@ export default function FiltersPanel({
           content: <BrandPicker brands={brands} draft={draft} set={set} />,
         }]
       : []),
+    ...(stores.length > 0
+      ? [{
+          key: 'store',
+          title: 'Tienda',
+          summary: draft.storeId ? stores.find((s) => s.id === draft.storeId)?.name || null : null,
+          content: (
+            <StoreList stores={stores} draft={draft} set={set} onPick={() => setOpenSection(null)} />
+          ),
+        }]
+      : []),
     {
       key: 'availability',
       title: 'Disponibilidad',
       summary: availabilityActive ? `${availabilityActive} activa${availabilityActive === 1 ? '' : 's'}` : null,
       content: <AvailabilityToggles draft={draft} set={set} />,
+    },
+    {
+      key: 'sort',
+      title: 'Ordenar por',
+      summary: (draft.sort || 'recent') !== 'recent'
+        ? SORT_OPTS.find((o) => o.key === draft.sort)?.label || null
+        : null,
+      content: <SortPicker draft={draft} set={set} onPick={() => setOpenSection(null)} />,
     },
   ]
 
@@ -309,7 +392,7 @@ export default function FiltersPanel({
   }
 
   return (
-    <div ref={rootRef} className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3">
+    <div ref={rootRef} className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3 h-full">
       {header}
 
       <div className="flex flex-col gap-0.5">
@@ -369,7 +452,7 @@ export default function FiltersPanel({
         })}
       </div>
 
-      {applyButton}
+      <div className="mt-auto pt-2">{applyButton}</div>
     </div>
   )
 }

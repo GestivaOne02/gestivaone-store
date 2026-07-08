@@ -26,7 +26,7 @@ export default function HeroCarousel({ slides = [] }) {
 
   if (slides.length === 0) {
     return (
-      <div className="relative h-[300px] lg:h-[340px] rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-900 flex items-center justify-center text-slate-300 text-sm font-bold">
+      <div className="relative h-[300px] sm:h-[340px] lg:h-full lg:min-h-[400px] rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-900 flex items-center justify-center text-slate-300 text-sm font-bold">
         Pronto encontrarás ofertas aquí
       </div>
     )
@@ -38,7 +38,7 @@ export default function HeroCarousel({ slides = [] }) {
     <section
       aria-roledescription="carrusel"
       aria-label="Ofertas principales"
-      className="relative h-[300px] lg:h-[340px] rounded-2xl overflow-hidden group"
+      className="relative h-[300px] sm:h-[340px] lg:h-full lg:min-h-[400px] rounded-2xl overflow-hidden group"
       onMouseEnter={() => (hovering.current = true)}
       onMouseLeave={() => (hovering.current = false)}
     >

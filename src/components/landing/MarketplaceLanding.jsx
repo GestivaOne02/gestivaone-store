@@ -26,9 +26,14 @@ export default function MarketplaceLanding({ data }) {
   const [search, setSearch] = useState(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  const showResults = Boolean(
-    search?.term || search?.category || (filters && Object.values(filters).some((v) => (Array.isArray(v) ? v.length : v)))
-  )
+  const filtersActive = (f) =>
+    Boolean(
+      f &&
+        (f.category || f.minPrice != null || f.maxPrice != null || f.brands?.length ||
+          f.onlyDeals || f.inStock || f.freeShipping || f.storeId ||
+          (f.sort && f.sort !== 'recent'))
+    )
+  const showResults = Boolean(search?.term || search?.category || filtersActive(filters))
 
   const scrollToResults = () => {
     requestAnimationFrame(() => {
@@ -105,20 +110,21 @@ export default function MarketplaceLanding({ data }) {
 
       <main className="max-w-[1280px] mx-auto px-5 sm:px-8 lg:px-10">
         {/* ── Zona hero: filtros | carrusel | tarjetas laterales ── */}
-        <div className="grid lg:grid-cols-[250px_minmax(0,1fr)_270px] gap-5 pt-8 items-start">
+        <div className="grid lg:grid-cols-[250px_minmax(0,1fr)_270px] gap-5 pt-8">
           <aside className="hidden lg:block" aria-label="Filtros de productos">
             <FiltersPanel
               categories={categories}
               brands={brands}
+              stores={stores}
               maxPrice={maxPrice}
               onApply={applyFilters}
               applied={filters}
             />
           </aside>
-          <div className="min-w-0">
+          <div className="min-w-0 h-full">
             <HeroCarousel slides={heroSlides} />
           </div>
-          <div className="hidden lg:block">
+          <div className="hidden lg:block h-full">
             <SideCards />
           </div>
         </div>
@@ -199,6 +205,7 @@ export default function MarketplaceLanding({ data }) {
                 variant="accordion"
                 categories={categories}
                 brands={brands}
+                stores={stores}
                 maxPrice={maxPrice}
                 onApply={applyFilters}
                 applied={filters}

@@ -50,10 +50,13 @@ export default function ResultsGrid({ filters, search, onClear }) {
       if (filters?.brands?.length) {
         q = q.or(filters.brands.map((b) => `name.ilike.%${b}%`).join(','))
       }
+      if (filters?.storeId) q = q.eq('company_id', filters.storeId)
 
-      const { data, count, error } = await q
-        .order('created_at', { ascending: false })
-        .limit(PAGE_SIZE)
+      if (filters?.sort === 'price_asc') q = q.order('price', { ascending: true })
+      else if (filters?.sort === 'price_desc') q = q.order('price', { ascending: false })
+      else q = q.order('created_at', { ascending: false })
+
+      const { data, count, error } = await q.limit(PAGE_SIZE)
       if (error) throw error
 
       // Adjuntar tienda (nombre + slug) para los enlaces de las tarjetas
@@ -103,7 +106,7 @@ export default function ResultsGrid({ filters, search, onClear }) {
           {!state.loading && !state.error && state.total != null && (
             <p className="text-[12px] font-semibold text-slate-400 mt-0.5">
               {state.total} producto{state.total === 1 ? '' : 's'} encontrado{state.total === 1 ? '' : 's'}
-              {state.total > PAGE_SIZE ? ` · mostrando los ${PAGE_SIZE} más recientes` : ''}
+              {state.total > PAGE_SIZE ? ` · mostrando ${PAGE_SIZE}` : ''}
             </p>
           )}
         </div>

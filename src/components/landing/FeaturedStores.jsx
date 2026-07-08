@@ -55,8 +55,12 @@ export default function FeaturedStores({ stores = [], error = false }) {
   const scroller = useRef(null)
   const [showAll, setShowAll] = useState(false)
 
-  const scrollBy = (dir) =>
-    scroller.current?.scrollBy({ left: dir * 300, behavior: 'smooth' })
+  // Avanza una "página" completa: con snap y tarjetas de ancho exacto
+  // nunca queda una tarjeta cortada en el borde
+  const scrollBy = (dir) => {
+    const el = scroller.current
+    if (el) el.scrollBy({ left: dir * el.clientWidth, behavior: 'smooth' })
+  }
 
   return (
     <section aria-labelledby="tiendas-title">
@@ -94,10 +98,10 @@ export default function FeaturedStores({ stores = [], error = false }) {
         <div className="relative group/row">
           <div
             ref={scroller}
-            className="flex gap-5 overflow-x-auto mk-scrollbar-hide scroll-smooth pb-1"
+            className="grid grid-flow-col auto-cols-[calc((100%-1.25rem)/2)] sm:auto-cols-[calc((100%-2.5rem)/3)] lg:auto-cols-[calc((100%-5rem)/5)] gap-5 overflow-x-auto mk-scrollbar-hide snap-x snap-mandatory pb-1"
           >
             {stores.map((s) => (
-              <div key={s.id} className="w-[210px] shrink-0">
+              <div key={s.id} className="snap-start">
                 <StoreCard store={s} />
               </div>
             ))}

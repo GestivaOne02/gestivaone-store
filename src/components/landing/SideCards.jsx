@@ -5,7 +5,7 @@ import { ArrowRight, HandCoins, Store } from 'lucide-react'
 // Columna derecha del hero: métodos de pago + CTA "Vende con Gestiva"
 export default function SideCards() {
   return (
-    <div className="flex flex-col gap-4 h-full">
+    <div className="flex flex-col gap-4 lg:min-h-[340px]">
       {/* Paga como prefieras */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
         <h2 className="text-[14px] font-bold text-slate-900 mb-3.5">Paga como prefieras</h2>

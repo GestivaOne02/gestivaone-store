@@ -118,7 +118,7 @@ export default function MarketplaceLanding({ data }) {
           <div className="min-w-0">
             <HeroCarousel slides={heroSlides} />
           </div>
-          <div className="hidden lg:block h-[340px]">
+          <div className="hidden lg:block">
             <SideCards />
           </div>
         </div>

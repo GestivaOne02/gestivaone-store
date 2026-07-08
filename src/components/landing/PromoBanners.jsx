@@ -1,4 +1,5 @@
 import { Check, MessageCircle, Store } from 'lucide-react'
+import { waLink } from '@/lib/whatsapp'
 
 const PERKS = [
   'Sin tarjeta de crédito',
@@ -48,7 +49,7 @@ export default function PromoBanners() {
             Te ayudamos a crear tu tienda, configurar productos y resolver todas tus dudas por WhatsApp.
           </p>
           <a
-            href="https://gestivaone.com"
+            href={waLink('Hola, necesito ayuda con mi tienda en Gestiva.')}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 mt-6 bg-slate-900 hover:bg-slate-800 text-white text-[13px] font-bold px-5 py-2.5 rounded-lg transition-colors"

@@ -15,6 +15,7 @@ import PromoBanners from './PromoBanners'
 import BestSellers from './BestSellers'
 import ResultsGrid from './ResultsGrid'
 import Footer from './Footer'
+import WhatsAppFloat from './WhatsAppFloat'
 
 // Shell de la landing del marketplace. Recibe todos los datos (reales, de Supabase)
 // desde el Server Component (src/app/page.js) y coordina filtros, búsqueda y secciones.
@@ -158,6 +159,7 @@ export default function MarketplaceLanding({ data }) {
       </main>
 
       <Footer />
+      <WhatsAppFloat />
 
       {/* Drawer de filtros en móvil (bottom sheet) */}
       <AnimatePresence>
